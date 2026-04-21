@@ -45,6 +45,16 @@ header span { font-size: 12px; color: #888; letter-spacing: 1px; }
 .club-item .cn { color: #aaa; white-space: nowrap; }
 .radius-ctrl { display: flex; align-items: center; gap: 10px; font-size: 12px; }
 .radius-ctrl input { flex: 1; accent-color: #CC0000; }
+.filter-group { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.filter-chip { padding: 4px 10px; border-radius: 20px; border: 1px solid #e0e0dc; background: white; font-size: 11px; cursor: pointer; transition: all 0.15s; font-weight: 500; color: #555; }
+.filter-chip:hover { border-color: #CC0000; color: #CC0000; }
+.filter-chip.active { background: #CC0000; color: white; border-color: #CC0000; }
+.filter-chip.prio5.active { background: #CC0000; border-color: #CC0000; }
+.filter-chip.prio3.active { background: #E87722; border-color: #E87722; }
+.filter-chip.prio2.active { background: #999; border-color: #999; }
+.filter-chip.prio1.active { background: #bbb; border-color: #bbb; }
+.filter-reset { font-size: 10px; color: #CC0000; cursor: pointer; text-decoration: underline; margin-top: 4px; display: inline-block; }
+.filter-count { font-size: 10px; color: #aaa; margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -60,12 +70,44 @@ header span { font-size: 12px; color: #888; letter-spacing: 1px; }
     <div class="panel">
       <h3>Einzugsgebiet</h3>
       <div class="radius-ctrl">
-        <span>Radius:</span>
+        <span id="radiusLabel">Fahrzeit:</span>
         <input type="range" id="radiusSlider" min="20" max="120" value="60" step="5">
-        <span id="radiusVal" style="font-weight:500;min-width:50px;">60 km</span>
+        <span id="radiusVal" style="font-weight:500;min-width:50px;">60 Min</span>
       </div>
-      <p style="font-size:10px;color:#aaa;margin-top:6px;">Luftlinie · entspricht ca. 60 Min. Fahrzeit</p>
+      <p style="font-size:10px;color:#aaa;margin-top:6px;" id="radiusHint">Echte Fahrzeit via OpenRouteService</p>
+      <div style="margin-top:10px;">
+        <div style="font-size:10px;color:#888;font-weight:600;letter-spacing:1px;margin-bottom:4px;">ORS API KEY</div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="password" id="orsKey" placeholder="Hier API-Key einfügen…" style="flex:1;font-size:11px;padding:5px 8px;border:1px solid #e0e0dc;border-radius:4px;outline:none;">
+          <button id="saveKey" style="font-size:11px;padding:5px 10px;background:#0a0f1e;color:white;border:none;border-radius:4px;cursor:pointer;">Speichern</button>
+        </div>
+        <div id="orsStatus" style="font-size:10px;margin-top:5px;color:#aaa;">Kein Key gespeichert – Luftlinie als Fallback</div>
+      </div>
     </div>
+    <div class="panel">
+      <h3>Filter</h3>
+
+      <div style="font-size:10px;color:#888;margin-bottom:4px;font-weight:600;letter-spacing:1px;">PRIORITÄT</div>
+      <div class="filter-group" id="prio-filters">
+        <div class="filter-chip prio5 active" data-prio="5">Prio 5</div>
+        <div class="filter-chip prio3 active" data-prio="3">Prio 3</div>
+        <div class="filter-chip prio2 active" data-prio="2">Prio 2</div>
+        <div class="filter-chip prio1 active" data-prio="1">Prio 1</div>
+      </div>
+
+      <div style="font-size:10px;color:#888;margin:10px 0 4px;font-weight:600;letter-spacing:1px;">LCM STATUS</div>
+      <div class="filter-group" id="lcm-filters">
+        <div class="filter-chip active" data-lcm="0">Kein LCM</div>
+        <div class="filter-chip active" data-lcm="1">LCM absolviert</div>
+      </div>
+
+      <div style="font-size:10px;color:#888;margin:10px 0 4px;font-weight:600;letter-spacing:1px;">SEGMENT</div>
+      <div class="filter-group" id="seg-filters"></div>
+
+      <span class="filter-reset" id="reset-filters">Alle Filter zurücksetzen</span>
+      <div class="filter-count" id="filter-count"></div>
+    </div>
+
     <div class="panel">
       <h3>Standorte</h3>
       <div id="standort-list"></div>
@@ -93,6 +135,169 @@ let clubMarkers = [], standortMarkers = [], radiusCircle = null;
 let activeStandort = null, activeIdx = null;
 let currentRadius = 60;
 
+// ORS state
+let orsApiKey = localStorage.getItem('ors_api_key') || '';
+let isochroneLayer = null;
+let isochronePolygon = null; // GeoJSON polygon for point-in-polygon test
+let orsMode = false; // true = using ORS isochrone, false = haversine fallback
+
+function updateOrsStatus() {
+  const el = document.getElementById('orsStatus');
+  if (orsApiKey) {
+    el.textContent = 'API-Key gespeichert ✓';
+    el.style.color = '#2a9d8f';
+    orsMode = true;
+  } else {
+    el.textContent = 'Kein Key gespeichert – Luftlinie als Fallback';
+    el.style.color = '#aaa';
+    orsMode = false;
+  }
+}
+
+if (orsApiKey) {
+  document.getElementById('orsKey').value = orsApiKey;
+  updateOrsStatus();
+}
+
+document.getElementById('saveKey').addEventListener('click', () => {
+  const val = document.getElementById('orsKey').value.trim();
+  if (val) {
+    orsApiKey = val;
+    localStorage.setItem('ors_api_key', val);
+    updateOrsStatus();
+    if (activeStandort) selectStandort(activeStandort, activeIdx);
+  }
+});
+
+// Point-in-polygon (ray casting)
+function pointInPolygon(lat, lon, polygon) {
+  // polygon is array of [lon, lat] rings (GeoJSON)
+  const coords = polygon[0]; // outer ring
+  let inside = false;
+  for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
+    const xi = coords[i][0], yi = coords[i][1];
+    const xj = coords[j][0], yj = coords[j][1];
+    const intersect = ((yi > lat) !== (yj > lat)) &&
+      (lon < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+async function fetchIsochrone(lat, lon, minutes) {
+  if (!orsApiKey) return null;
+  const url = 'https://api.openrouteservice.org/v2/isochrones/driving-car';
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': orsApiKey
+      },
+      body: JSON.stringify({
+        locations: [[lon, lat]],
+        range: [minutes * 60],
+        range_type: 'time',
+        smoothing: 0.25
+      })
+    });
+    if (!resp.ok) {
+      const err = await resp.json();
+      console.error('ORS error:', err);
+      document.getElementById('orsStatus').textContent = 'API-Fehler: ' + (err.error?.message || resp.status);
+      document.getElementById('orsStatus').style.color = '#CC0000';
+      return null;
+    }
+    const data = await resp.json();
+    return data.features?.[0]?.geometry || null;
+  } catch(e) {
+    console.error('ORS fetch error:', e);
+    document.getElementById('orsStatus').textContent = 'Verbindungsfehler';
+    document.getElementById('orsStatus').style.color = '#CC0000';
+    return null;
+  }
+}
+
+// Filter state
+let activePrios = new Set([1, 2, 3, 5]);
+let activeLcm = new Set([0, 1]);
+let activeSegs = new Set();
+
+// Build unique segments list
+const allSegments = [...new Set(CLUBS.map(c => c.Segment))].sort();
+allSegments.forEach(seg => activeSegs.add(seg));
+
+function initSegmentFilters() {
+  const container = document.getElementById('seg-filters');
+  allSegments.forEach(seg => {
+    const chip = document.createElement('div');
+    chip.className = 'filter-chip active';
+    chip.dataset.seg = seg;
+    chip.textContent = seg.replace('Leistungsorientierter Race Club - ', 'Race – ')
+                         .replace('Allrounder Club ', 'Allr. ')
+                         .replace('Erwachsenenclub ', 'Erw. ')
+                         .replace('Breitensport-Club', 'Breiten.')
+                         .replace('Potenziell inaktive Clubs', 'Inaktiv')
+                         .replace('Gönnerclub (echt)', 'Gönner')
+                         .replace('Tourenclub', 'Touren');
+    chip.title = seg;
+    chip.addEventListener('click', () => {
+      if (activeSegs.has(seg)) activeSegs.delete(seg);
+      else activeSegs.add(seg);
+      chip.classList.toggle('active');
+      applyFilters();
+    });
+    container.appendChild(chip);
+  });
+}
+
+document.querySelectorAll('#prio-filters .filter-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const p = parseInt(chip.dataset.prio);
+    if (activePrios.has(p)) activePrios.delete(p);
+    else activePrios.add(p);
+    chip.classList.toggle('active');
+    applyFilters();
+  });
+});
+
+document.querySelectorAll('#lcm-filters .filter-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const v = parseInt(chip.dataset.lcm);
+    if (activeLcm.has(v)) activeLcm.delete(v);
+    else activeLcm.add(v);
+    chip.classList.toggle('active');
+    applyFilters();
+  });
+});
+
+document.getElementById('reset-filters').addEventListener('click', () => {
+  activePrios = new Set([1, 2, 3, 5]);
+  activeLcm = new Set([0, 1]);
+  activeSegs = new Set(allSegments);
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.add('active'));
+  applyFilters();
+});
+
+function getFilteredClubs() {
+  return CLUBS.filter(c =>
+    activePrios.has(c.prio) &&
+    activeLcm.has(c.lcm_done) &&
+    activeSegs.has(c.Segment)
+  );
+}
+
+function updateFilterCount() {
+  const total = getFilteredClubs().length;
+  document.getElementById('filter-count').textContent = total + ' von ' + CLUBS.length + ' Clubs sichtbar';
+}
+
+function applyFilters() {
+  updateFilterCount();
+  drawClubs(activeStandort);
+  if (activeStandort) showStats(activeStandort);
+}
+
 const map = L.map('map').setView([46.8, 8.2], 8);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap', maxZoom: 14
@@ -109,14 +314,23 @@ function haversine(lat1, lon1, lat2, lon2) {
 function drawClubs(center) {
   clubMarkers.forEach(m => map.removeLayer(m));
   clubMarkers = [];
+  const visibleClubs = getFilteredClubs();
   CLUBS.forEach(c => {
-    const dist = center ? haversine(c.latitude, c.longitude, center.lat, center.lon) : null;
-    const inRange = !center || dist <= currentRadius;
+    const isFiltered = !visibleClubs.includes(c);
+    let inRange;
+    if (!center) {
+      inRange = true;
+    } else if (isochronePolygon && orsMode) {
+      inRange = pointInPolygon(c.latitude, c.longitude, isochronePolygon.coordinates);
+    } else {
+      inRange = haversine(c.latitude, c.longitude, center.lat, center.lon) <= currentRadius;
+    }
     const color = prioColors[c.prio] || '#ccc';
-    const opacity = inRange ? 0.85 : 0.12;
-    const radius = inRange ? (c.prio === 5 ? 7 : c.prio === 3 ? 5 : 4) : 3;
+    const visible = inRange && !isFiltered;
+    const opacity = visible ? 0.85 : 0.08;
+    const radius = visible ? (c.prio === 5 ? 7 : c.prio === 3 ? 5 : 4) : 3;
     const m = L.circleMarker([c.latitude, c.longitude], {
-      radius, color, fillColor: color, fillOpacity: opacity, weight: inRange ? 1.5 : 0.5, opacity
+      radius, color, fillColor: color, fillOpacity: opacity, weight: visible ? 1.5 : 0.5, opacity
     }).bindPopup(`<b>${c.Club}</b><br><span style="color:#888">${c.Segment}</span><br>Ort: ${c.Ort}<br>LCM: ${c['LCM absolviert']}<br>Priorität: ${c.prio}`);
     m.addTo(map);
     clubMarkers.push(m);
@@ -124,7 +338,13 @@ function drawClubs(center) {
 }
 
 function showStats(s) {
-  const nearby = CLUBS.filter(c => haversine(c.latitude, c.longitude, s.lat, s.lon) <= currentRadius);
+  const filtered = getFilteredClubs();
+  const nearby = filtered.filter(c => {
+    if (isochronePolygon && orsMode) {
+      return pointInPolygon(c.latitude, c.longitude, isochronePolygon.coordinates);
+    }
+    return haversine(c.latitude, c.longitude, s.lat, s.lon) <= currentRadius;
+  });
   const notDone = nearby.filter(c => c.lcm_done === 0);
   const highPrio = nearby.filter(c => c.prio === 5);
   const highPrioNotDone = notDone.filter(c => c.prio === 5);
@@ -165,16 +385,47 @@ function showStats(s) {
   `;
 }
 
-function selectStandort(s, i) {
+async function selectStandort(s, i) {
   activeStandort = s; activeIdx = i;
   document.querySelectorAll('.standort-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(`s-${i}`).classList.add('active');
-  if (radiusCircle) map.removeLayer(radiusCircle);
-  radiusCircle = L.circle([s.lat, s.lon], {
-    radius: currentRadius * 1000,
-    color: '#CC0000', fillColor: '#CC0000', fillOpacity: 0.06, weight: 1.5, dashArray: '6,4'
-  }).addTo(map);
+
+  // Remove old layers
+  if (radiusCircle) { map.removeLayer(radiusCircle); radiusCircle = null; }
+  if (isochroneLayer) { map.removeLayer(isochroneLayer); isochroneLayer = null; }
+  isochronePolygon = null;
+
   map.setView([s.lat, s.lon], 9);
+
+  if (orsMode && orsApiKey) {
+    document.getElementById('orsStatus').textContent = 'Berechne Isochrone…';
+    document.getElementById('orsStatus').style.color = '#E87722';
+    const geom = await fetchIsochrone(s.lat, s.lon, currentRadius);
+    if (geom) {
+      isochronePolygon = geom;
+      isochroneLayer = L.geoJSON({type:'Feature', geometry: geom}, {
+        style: {
+          color: '#CC0000', fillColor: '#CC0000', fillOpacity: 0.07,
+          weight: 2, dashArray: '6,4'
+        }
+      }).addTo(map);
+      document.getElementById('orsStatus').textContent = 'Isochrone geladen ✓ (Fahrzeit ' + currentRadius + ' Min)';
+      document.getElementById('orsStatus').style.color = '#2a9d8f';
+    } else {
+      // Fallback to circle
+      radiusCircle = L.circle([s.lat, s.lon], {
+        radius: currentRadius * 1000,
+        color: '#CC0000', fillColor: '#CC0000', fillOpacity: 0.06, weight: 1.5, dashArray: '6,4'
+      }).addTo(map);
+    }
+  } else {
+    // Luftlinie fallback
+    radiusCircle = L.circle([s.lat, s.lon], {
+      radius: currentRadius * 1000,
+      color: '#CC0000', fillColor: '#CC0000', fillOpacity: 0.06, weight: 1.5, dashArray: '6,4'
+    }).addTo(map);
+  }
+
   drawClubs(s);
   showStats(s);
 }
@@ -197,18 +448,12 @@ function initStandorte() {
 
 document.getElementById('radiusSlider').addEventListener('input', function() {
   currentRadius = parseInt(this.value);
-  document.getElementById('radiusVal').textContent = currentRadius + ' km';
-  if (activeStandort) {
-    if (radiusCircle) map.removeLayer(radiusCircle);
-    radiusCircle = L.circle([activeStandort.lat, activeStandort.lon], {
-      radius: currentRadius * 1000,
-      color: '#CC0000', fillColor: '#CC0000', fillOpacity: 0.06, weight: 1.5, dashArray: '6,4'
-    }).addTo(map);
-    drawClubs(activeStandort);
-    showStats(activeStandort);
-  }
+  document.getElementById('radiusVal').textContent = orsMode ? currentRadius + ' Min' : currentRadius + ' km';
+  if (activeStandort) selectStandort(activeStandort, activeIdx);
 });
 
+initSegmentFilters();
+updateFilterCount();
 drawClubs(null);
 initStandorte();
 </script>
