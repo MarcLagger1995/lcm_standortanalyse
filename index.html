@@ -62,65 +62,75 @@ header span { font-size: 12px; color: #888; letter-spacing: 1px; }
 .filter-count { font-size: 10px; color: #aaa; margin-top: 6px; }
 
 /* ---- TABS ---- */
-.tab-bar{background:#0a0f1e;display:flex;border-bottom:3px solid #CC0000}
-.tab-btn{padding:12px 24px;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;
-  color:rgba(255,255,255,0.5);background:none;border:none;cursor:pointer;transition:all .2s;
-  border-bottom:3px solid transparent;margin-bottom:-3px}
-.tab-btn:hover{color:rgba(255,255,255,.85)}
-.tab-btn.active{color:#fff;border-bottom-color:#CC0000;background:rgba(204,0,0,.12)}
-.tab-pane{display:none}
-.tab-pane.active{display:flex}
-#tab-map.active{height:calc(100vh - 52px - 45px)}
-#tab-analyse.active{height:calc(100vh - 52px - 45px);overflow-y:auto;
-  flex-direction:column;background:#f4f4f0;padding:28px 32px}
-.sa-page-title{font-size:20px;font-weight:700;color:#0a0f1e;margin-bottom:4px}
-.sa-page-sub{font-size:12px;color:#888;margin-bottom:16px;line-height:1.6}
-.sa-status{font-size:12px;padding:10px 14px;border-radius:6px;margin-bottom:16px;
-  background:#f8f8f5;border:1px solid #e0e0dc;color:#555;display:none}
-.sa-status.vis{display:block}
-.sa-pbar{height:4px;background:#f0f0ec;border-radius:2px;margin-top:6px;overflow:hidden}
-.sa-pbar-fill{height:100%;background:#CC0000;border-radius:2px;transition:width .3s;width:0}
-.sa-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(500px,1fr));gap:20px}
-.sa-card{background:#fff;border-radius:8px;border:1px solid #e0e0dc;border-top:4px solid #CC0000}
-.sa-card-hd{padding:16px 20px 12px;border-bottom:1px solid #f0f0ec}
-.sa-card-title{font-size:16px;font-weight:700;color:#0a0f1e;display:flex;align-items:center;gap:10px}
-.sa-num{width:26px;height:26px;background:#CC0000;color:#fff;border-radius:50%;
-  font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.sa-card-desc{font-size:11px;color:#888;margin-top:4px}
-.sa-card-mode{font-size:10px;margin-top:3px;font-weight:600}
-.sa-body{padding:16px 20px}
-.sa-rtabs{display:flex;gap:6px;margin-bottom:14px}
-.sa-rt{padding:4px 14px;border-radius:20px;border:1.5px solid #e0e0dc;background:#fff;
-  font-size:11px;font-weight:600;cursor:pointer;color:#666;transition:all .15s}
-.sa-rt.active{background:#CC0000;color:#fff;border-color:#CC0000}
-.sa-loading{color:#aaa;font-size:12px;padding:20px 0;text-align:center}
-.sa-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
-.sa-stat{background:#f8f8f5;border-radius:6px;padding:10px 12px}
-.sa-stat-val{font-size:22px;font-weight:700;color:#0a0f1e}
-.sa-stat-val.red{color:#CC0000}
-.sa-stat-lbl{font-size:10px;color:#888;margin-top:2px}
-.sa-sec{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
-  color:#CC0000;margin:12px 0 6px}
-.sa-scen{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px}
-.sa-sc{border-radius:6px;padding:10px;text-align:center}
-.sa-sc.w{background:#fff5f5;border:1px solid #fecaca}
-.sa-sc.n{background:#fefce8;border:1px solid #fde68a}
-.sa-sc.b{background:#f0fdf4;border:1px solid #bbf7d0}
-.sa-sc-lbl{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
-.sa-sc.w .sa-sc-lbl{color:#b91c1c}
-.sa-sc.n .sa-sc-lbl{color:#92400e}
-.sa-sc.b .sa-sc-lbl{color:#166534}
-.sa-sc-val{font-size:24px;font-weight:700}
-.sa-sc.w .sa-sc-val{color:#b91c1c}
-.sa-sc.n .sa-sc-val{color:#92400e}
-.sa-sc.b .sa-sc-val{color:#166534}
-.sa-sc-pct{font-size:10px;color:#aaa}
-.sa-clist{max-height:160px;overflow-y:auto;border:1px solid #f0f0ec;border-radius:4px;margin-top:2px}
-.sa-ci{font-size:11px;padding:4px 8px;border-bottom:1px solid #f5f5f3;
-  display:flex;justify-content:space-between;gap:8px;align-items:center}
-.sa-ci:last-child{border-bottom:none}
-.sa-ci .cn{color:#aaa;white-space:nowrap;font-size:10px;flex-shrink:0}
-.sa-pdot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.tab-bar { background: #0a0f1e; display: flex; height: 45px;
+  border-bottom: 3px solid #CC0000; box-sizing: border-box; }
+.tab-btn { padding: 0 24px; font-size: 12px; font-weight: 600; letter-spacing: 1px;
+  text-transform: uppercase; color: rgba(255,255,255,0.5); background: none; border: none;
+  cursor: pointer; transition: all .2s; border-bottom: 3px solid transparent;
+  margin-bottom: -3px; height: 100%; }
+.tab-btn:hover { color: rgba(255,255,255,.85); }
+.tab-btn.active { color: #fff; border-bottom-color: #CC0000;
+  background: rgba(204,0,0,.12); }
+#tab-map { display: none; }
+#tab-map.active { display: block; }
+#tab-analyse { display: none; }
+#tab-analyse.active { display: flex; height: calc(100vh - 52px - 45px); overflow-y: auto;
+  flex-direction: column; background: #f4f4f0; padding: 28px 32px; box-sizing: border-box; }
+.sa-page-title { font-size: 20px; font-weight: 700; color: #0a0f1e; margin-bottom: 4px; }
+.sa-page-sub { font-size: 12px; color: #888; margin-bottom: 16px; line-height: 1.6; }
+.sa-status { font-size: 12px; padding: 10px 14px; border-radius: 6px; margin-bottom: 16px;
+  background: #f8f8f5; border: 1px solid #e0e0dc; color: #555; display: none; }
+.sa-status.vis { display: block; }
+.sa-pbar { height: 4px; background: #f0f0ec; border-radius: 2px; margin-top: 6px; overflow: hidden; }
+.sa-pbar-fill { height: 100%; background: #CC0000; border-radius: 2px;
+  transition: width .3s; width: 0; }
+.sa-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(500px,1fr)); gap: 20px; }
+.sa-card { background: #fff; border-radius: 8px; border: 1px solid #e0e0dc;
+  border-top: 4px solid #CC0000; }
+.sa-card-hd { padding: 16px 20px 12px; border-bottom: 1px solid #f0f0ec; }
+.sa-card-title { font-size: 16px; font-weight: 700; color: #0a0f1e;
+  display: flex; align-items: center; gap: 10px; }
+.sa-num { width: 26px; height: 26px; background: #CC0000; color: #fff; border-radius: 50%;
+  font-size: 12px; font-weight: 700; display: flex; align-items: center;
+  justify-content: center; flex-shrink: 0; }
+.sa-card-desc { font-size: 11px; color: #888; margin-top: 4px; }
+.sa-card-mode { font-size: 10px; margin-top: 3px; font-weight: 600; }
+.sa-body { padding: 16px 20px; }
+.sa-rtabs { display: flex; gap: 6px; margin-bottom: 14px; }
+.sa-rt { padding: 4px 14px; border-radius: 20px; border: 1.5px solid #e0e0dc;
+  background: #fff; font-size: 11px; font-weight: 600; cursor: pointer;
+  color: #666; transition: all .15s; }
+.sa-rt.active { background: #CC0000; color: #fff; border-color: #CC0000; }
+.sa-loading { color: #aaa; font-size: 12px; padding: 20px 0; text-align: center; }
+.sa-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.sa-stat { background: #f8f8f5; border-radius: 6px; padding: 10px 12px; }
+.sa-stat-val { font-size: 22px; font-weight: 700; color: #0a0f1e; }
+.sa-stat-val.red { color: #CC0000; }
+.sa-stat-lbl { font-size: 10px; color: #888; margin-top: 2px; }
+.sa-sec { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+  color: #CC0000; margin: 12px 0 6px; }
+.sa-scen { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 4px; }
+.sa-sc { border-radius: 6px; padding: 10px; text-align: center; }
+.sa-sc.w { background: #fff5f5; border: 1px solid #fecaca; }
+.sa-sc.n { background: #fefce8; border: 1px solid #fde68a; }
+.sa-sc.b { background: #f0fdf4; border: 1px solid #bbf7d0; }
+.sa-sc-lbl { font-size: 9px; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; margin-bottom: 4px; }
+.sa-sc.w .sa-sc-lbl { color: #b91c1c; }
+.sa-sc.n .sa-sc-lbl { color: #92400e; }
+.sa-sc.b .sa-sc-lbl { color: #166534; }
+.sa-sc-val { font-size: 24px; font-weight: 700; }
+.sa-sc.w .sa-sc-val { color: #b91c1c; }
+.sa-sc.n .sa-sc-val { color: #92400e; }
+.sa-sc.b .sa-sc-val { color: #166534; }
+.sa-sc-pct { font-size: 10px; color: #aaa; }
+.sa-clist { max-height: 160px; overflow-y: auto; border: 1px solid #f0f0ec;
+  border-radius: 4px; margin-top: 2px; }
+.sa-ci { font-size: 11px; padding: 4px 8px; border-bottom: 1px solid #f5f5f3;
+  display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.sa-ci:last-child { border-bottom: none; }
+.sa-ci .cn { color: #aaa; white-space: nowrap; font-size: 10px; flex-shrink: 0; }
+.sa-pdot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -135,7 +145,7 @@ header span { font-size: 12px; color: #888; letter-spacing: 1px; }
   <button class="tab-btn active" onclick="switchTab('map')">CH-Karte LCM</button>
   <button class="tab-btn" onclick="switchTab('analyse')">Konkrete Standortanalyse</button>
 </div>
-<div id="tab-map" class="tab-pane active">
+<div id="tab-map" class="active">
 <div id="app">
   <div id="sidebar">
     <div class="panel">
@@ -198,7 +208,12 @@ header span { font-size: 12px; color: #888; letter-spacing: 1px; }
 </div>
 </div><!-- /tab-map -->
 
-
+<div id="tab-analyse">
+  <div class="sa-page-title">Konkrete Standortanalyse</div>
+  <div class="sa-page-sub">Potenzialabschätzung je Standort. Mit ORS API-Key: echte Fahrzeiten. Ohne Key: Luftlinie (45 Min ≈ 50 km, 60 Min ≈ 65 km).</div>
+  <div class="sa-status" id="sa-status"><span id="sa-status-text"></span><div class="sa-pbar"><div class="sa-pbar-fill" id="sa-pbar-fill"></div></div></div>
+  <div class="sa-grid" id="sa-grid"></div>
+</div><!-- /tab-analyse -->
 
 
 
@@ -576,145 +591,168 @@ initSegmentFilters();
 updateFilterCount();
 drawClubs(null);
 initStandorte();
-
 // ---- TABS ----
-function switchTab(t){
-  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',(t==='map'&&i===0)||(t==='analyse'&&i===1)));
-  document.getElementById('tab-map').classList.toggle('active',t==='map');
-  document.getElementById('tab-analyse').classList.toggle('active',t==='analyse');
-  if(t==='analyse'&&!saBuilt) buildAnalyse();
+function switchTab(t) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', (t === 'map' && i === 0) || (t === 'analyse' && i === 1));
+  });
+  const mapTab = document.getElementById('tab-map');
+  const analyseTab = document.getElementById('tab-analyse');
+  if (t === 'map') {
+    mapTab.classList.add('active');
+    analyseTab.classList.remove('active');
+    // Critical: tell Leaflet to recalculate map size
+    setTimeout(() => map.invalidateSize(), 50);
+  } else {
+    mapTab.classList.remove('active');
+    analyseTab.classList.add('active');
+    if (!saBuilt) buildAnalyse();
+  }
 }
 
 // ---- STANDORTANALYSE ----
-const isoGeoms={};
-let saBuilt=false;
-const SA_KM={45:50,60:65};
+const isoGeoms = {};
+let saBuilt = false;
+const SA_KM = { 45: 50, 60: 65 };
 
-function saSetStatus(msg,pct){
-  const el=document.getElementById('sa-status');
-  document.getElementById('sa-status-text').textContent=msg;
-  document.getElementById('sa-pbar-fill').style.width=pct+'%';
-  el.classList.toggle('vis',msg!=='');
+function saSetStatus(msg, pct) {
+  const el = document.getElementById('sa-status');
+  document.getElementById('sa-status-text').textContent = msg;
+  document.getElementById('sa-pbar-fill').style.width = pct + '%';
+  el.classList.toggle('vis', msg !== '');
 }
 
-async function fetchIso(lat,lon,minutes){
-  if(!orsApiKey) return null;
-  try{
-    const r=await fetch('https://api.openrouteservice.org/v2/isochrones/driving-car',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':orsApiKey},
-      body:JSON.stringify({locations:[[lon,lat]],range:[minutes*60],range_type:'time',smoothing:0.25})
+async function fetchIso(lat, lon, minutes) {
+  if (!orsApiKey) return null;
+  try {
+    const r = await fetch('https://api.openrouteservice.org/v2/isochrones/driving-car', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': orsApiKey },
+      body: JSON.stringify({ locations: [[lon, lat]], range: [minutes * 60],
+        range_type: 'time', smoothing: 0.25 })
     });
-    if(!r.ok) return null;
-    const d=await r.json();
-    return d.features?.[0]?.geometry||null;
-  }catch(e){return null;}
+    if (!r.ok) return null;
+    const d = await r.json();
+    return d.features?.[0]?.geometry || null;
+  } catch(e) { return null; }
 }
 
-function clubsNear(geom,lat,lon,km){
-  if(geom) return CLUBS.filter(c=>pointInPolygon(c.latitude,c.longitude,geom.coordinates));
-  return CLUBS.filter(c=>haversine(c.latitude,c.longitude,lat,lon)<=km);
+function clubsNear(geom, lat, lon, km) {
+  if (geom) return CLUBS.filter(c => pointInPolygon(c.latitude, c.longitude, geom.coordinates));
+  return CLUBS.filter(c => haversine(c.latitude, c.longitude, lat, lon) <= km);
 }
 
-async function buildAnalyse(){
-  saBuilt=true;
-  const grid=document.getElementById('sa-grid');
-  grid.innerHTML=STANDORTE.map((s,i)=>(
-    `<div class="sa-card" id="sa-card-${i}">
-      <div class="sa-card-hd">
-        <div class="sa-card-title"><div class="sa-num">${i+1}</div><span>${s.name}</span></div>
-        <div class="sa-card-desc">${s.desc}</div>
-        <div class="sa-card-mode" id="sa-mode-${i}"></div>
-      </div>
-      <div class="sa-body">
-        <div class="sa-rtabs">
-          <div class="sa-rt active" data-c="${i}" data-m="45" onclick="saSwitch(${i},45)">45 Min</div>
-          <div class="sa-rt"        data-c="${i}" data-m="60" onclick="saSwitch(${i},60)">60 Min</div>
-        </div>
-        <div id="sa-con-${i}"><div class="sa-loading">Wird geladen…</div></div>
-      </div>
-    </div>`
+async function buildAnalyse() {
+  saBuilt = true;
+  const grid = document.getElementById('sa-grid');
+  grid.innerHTML = STANDORTE.map((s, i) => (
+    '<div class="sa-card" id="sa-card-' + i + '">' +
+      '<div class="sa-card-hd">' +
+        '<div class="sa-card-title"><div class="sa-num">' + (i+1) + '</div><span>' + s.name + '</span></div>' +
+        '<div class="sa-card-desc">' + s.desc + '</div>' +
+        '<div class="sa-card-mode" id="sa-mode-' + i + '"></div>' +
+      '</div>' +
+      '<div class="sa-body">' +
+        '<div class="sa-rtabs">' +
+          '<div class="sa-rt active" data-c="' + i + '" data-m="45" onclick="saSwitch(' + i + ',45)">45 Min</div>' +
+          '<div class="sa-rt"        data-c="' + i + '" data-m="60" onclick="saSwitch(' + i + ',60)">60 Min</div>' +
+        '</div>' +
+        '<div id="sa-con-' + i + '"><div class="sa-loading">Wird geladen\u2026</div></div>' +
+      '</div>' +
+    '</div>'
   )).join('');
 
-  if(orsApiKey){
-    const tot=STANDORTE.length*2;
-    let done=0;
-    for(let i=0;i<STANDORTE.length;i++){
-      const s=STANDORTE[i];
-      isoGeoms[i]=isoGeoms[i]||{};
-      for(const m of [45,60]){
-        if(isoGeoms[i][m]===undefined){
-          saSetStatus('Lade '+s.name+' ('+m+' Min)… '+(done+1)+'/'+tot, Math.round(done/tot*100));
-          isoGeoms[i][m]=await fetchIso(s.lat,s.lon,m);
-          await new Promise(r=>setTimeout(r,400));
+  if (orsApiKey) {
+    const tot = STANDORTE.length * 2;
+    let done = 0;
+    for (let i = 0; i < STANDORTE.length; i++) {
+      const s = STANDORTE[i];
+      isoGeoms[i] = isoGeoms[i] || {};
+      for (const m of [45, 60]) {
+        if (isoGeoms[i][m] === undefined) {
+          saSetStatus('Lade ' + s.name + ' (' + m + ' Min)\u2026 ' + (done+1) + '/' + tot,
+            Math.round(done / tot * 100));
+          isoGeoms[i][m] = await fetchIso(s.lat, s.lon, m);
+          await new Promise(r => setTimeout(r, 400));
         }
         done++;
       }
-      renderSaCard(i,45);
+      renderSaCard(i, 45);
     }
-    saSetStatus('',100);
+    saSetStatus('', 100);
   } else {
-    STANDORTE.forEach((_,i)=>renderSaCard(i,45));
+    STANDORTE.forEach((_, i) => renderSaCard(i, 45));
   }
 }
 
-function saSwitch(i,m){
-  document.querySelectorAll(`.sa-rt[data-c="${i}"]`).forEach(el=>el.classList.toggle('active',el.dataset.m===String(m)));
-  renderSaCard(i,m);
+function saSwitch(i, m) {
+  document.querySelectorAll('.sa-rt[data-c="' + i + '"]').forEach(el => {
+    el.classList.toggle('active', el.dataset.m === String(m));
+  });
+  renderSaCard(i, m);
 }
 
-function renderSaCard(i,min){
-  const s=STANDORTE[i];
-  const geom=(isoGeoms[i]||{})[min]||null;
-  const km=SA_KM[min];
-  const ors=!!geom;
-  const modeEl=document.getElementById('sa-mode-'+i);
-  if(modeEl){
-    modeEl.textContent=ors
-      ?'\u2713 Echte Fahrzeit (ORS Isochrone '+min+' Min)'
-      :'\u26a0 Luftlinie-Näherung ('+km+' km \u2248 '+min+' Min)';
-    modeEl.style.color=ors?'#2a9d8f':'#E87722';
+function renderSaCard(i, min) {
+  const s = STANDORTE[i];
+  const geom = (isoGeoms[i] || {})[min] || null;
+  const km = SA_KM[min];
+  const ors = !!geom;
+  const modeEl = document.getElementById('sa-mode-' + i);
+  if (modeEl) {
+    modeEl.textContent = ors
+      ? '\u2713 Echte Fahrzeit (ORS ' + min + ' Min)'
+      : '\u26a0 Luftlinie (' + km + ' km \u2248 ' + min + ' Min)';
+    modeEl.style.color = ors ? '#2a9d8f' : '#E87722';
   }
-  const all=clubsNear(geom,s.lat,s.lon,km);
-  const top=all.filter(c=>c.prio===5&&c.lcm_done===0);
-  const tot=all.length;
-  const worst=Math.round(tot*0.05);
-  const norm=Math.round(tot*0.10);
-  const best=Math.round(tot*0.15);
-  const pc={5:'#CC0000',3:'#E87722',2:'#999',1:'#ccc'};
-  const allHtml=all.length
-    ?all.map(c=>'<div class="sa-ci"><span style="display:flex;align-items:center;gap:5px;"><span class="sa-pdot" style="background:'+(pc[c.prio]||'#ccc')+'"></span>'+c.Club+'</span><span class="cn">'+c.Ort+'</span></div>').join('')
-    :'<div class="sa-ci" style="color:#aaa">Keine Clubs gefunden</div>';
-  const topHtml=top.length
-    ?top.map(c=>'<div class="sa-ci"><span>'+c.Club+'</span><span class="cn">'+c.Ort+'</span></div>').join('')
-    :'<div class="sa-ci" style="color:#aaa">Keine Top Clubs in diesem Umkreis</div>';
-  const el=document.getElementById('sa-con-'+i);
-  if(!el) return;
-  el.innerHTML=
-    '<div class="sa-row">'+
-      '<div class="sa-stat"><div class="sa-stat-val">'+tot+'</div><div class="sa-stat-lbl">Clubs im Umkreis ('+min+' Min)</div></div>'+
-      '<div class="sa-stat"><div class="sa-stat-val red">'+top.length+'</div><div class="sa-stat-lbl">Top Clubs (Prio 5, kein LCM)</div></div>'+
-    '</div>'+
-    '<div class="sa-sec">Potenzial Teilnehmende Clubs</div>'+
-    '<div class="sa-scen">'+
-      '<div class="sa-sc w"><div class="sa-sc-lbl">Worst Case</div><div class="sa-sc-val">'+worst+'</div><div class="sa-sc-pct">5% von '+tot+'</div></div>'+
-      '<div class="sa-sc n"><div class="sa-sc-lbl">Normal Case</div><div class="sa-sc-val">'+norm+'</div><div class="sa-sc-pct">10% von '+tot+'</div></div>'+
-      '<div class="sa-sc b"><div class="sa-sc-lbl">Best Case</div><div class="sa-sc-val">'+best+'</div><div class="sa-sc-pct">15% von '+tot+'</div></div>'+
-    '</div>'+
-    '<div class="sa-sec">Alle '+tot+' Clubs im Umkreis</div>'+
-    '<div class="sa-clist">'+allHtml+'</div>'+
-    '<div class="sa-sec">Top Clubs – Prio 5, kein LCM ('+top.length+')</div>'+
-    '<div class="sa-clist">'+topHtml+'</div>';
+  const all = clubsNear(geom, s.lat, s.lon, km);
+  const top = all.filter(c => c.prio === 5 && c.lcm_done === 0);
+  const tot = all.length;
+  const worst = Math.round(tot * 0.05);
+  const norm  = Math.round(tot * 0.10);
+  const best  = Math.round(tot * 0.15);
+  const pc = { 5:'#CC0000', 3:'#E87722', 2:'#999', 1:'#ccc' };
+
+  const allHtml = all.length
+    ? all.map(c =>
+        '<div class="sa-ci">' +
+        '<span style="display:flex;align-items:center;gap:5px;">' +
+        '<span class="sa-pdot" style="background:' + (pc[c.prio]||'#ccc') + '"></span>' +
+        c.Club + '</span>' +
+        '<span class="cn">' + c.Ort + '</span></div>'
+      ).join('')
+    : '<div class="sa-ci" style="color:#aaa">Keine Clubs gefunden</div>';
+
+  const topHtml = top.length
+    ? top.map(c =>
+        '<div class="sa-ci"><span>' + c.Club + '</span>' +
+        '<span class="cn">' + c.Ort + '</span></div>'
+      ).join('')
+    : '<div class="sa-ci" style="color:#aaa">Keine Top Clubs in diesem Umkreis</div>';
+
+  const el = document.getElementById('sa-con-' + i);
+  if (!el) return;
+  el.innerHTML =
+    '<div class="sa-row">' +
+      '<div class="sa-stat"><div class="sa-stat-val">' + tot + '</div>' +
+        '<div class="sa-stat-lbl">Clubs im Umkreis (' + min + ' Min)</div></div>' +
+      '<div class="sa-stat"><div class="sa-stat-val red">' + top.length + '</div>' +
+        '<div class="sa-stat-lbl">Top Clubs (Prio 5, kein LCM)</div></div>' +
+    '</div>' +
+    '<div class="sa-sec">Potenzial Teilnehmende Clubs</div>' +
+    '<div class="sa-scen">' +
+      '<div class="sa-sc w"><div class="sa-sc-lbl">Worst Case</div>' +
+        '<div class="sa-sc-val">' + worst + '</div><div class="sa-sc-pct">5% von ' + tot + '</div></div>' +
+      '<div class="sa-sc n"><div class="sa-sc-lbl">Normal Case</div>' +
+        '<div class="sa-sc-val">' + norm + '</div><div class="sa-sc-pct">10% von ' + tot + '</div></div>' +
+      '<div class="sa-sc b"><div class="sa-sc-lbl">Best Case</div>' +
+        '<div class="sa-sc-val">' + best + '</div><div class="sa-sc-pct">15% von ' + tot + '</div></div>' +
+    '</div>' +
+    '<div class="sa-sec">Alle ' + tot + ' Clubs im Umkreis</div>' +
+    '<div class="sa-clist">' + allHtml + '</div>' +
+    '<div class="sa-sec">Top Clubs \u2013 Prio 5, kein LCM (' + top.length + ')</div>' +
+    '<div class="sa-clist">' + topHtml + '</div>';
 }
 
 </script>
-
-<div id="tab-analyse" class="tab-pane">
-  <div class="sa-page-title">Konkrete Standortanalyse</div>
-  <div class="sa-page-sub">Potenzialabschätzung je Standort. Mit ORS API-Key: echte Fahrzeiten via Isochrone. Ohne Key: Luftlinie-Näherung (45 Min ≈ 50 km, 60 Min ≈ 65 km).</div>
-  <div class="sa-status" id="sa-status"><span id="sa-status-text"></span><div class="sa-pbar"><div class="sa-pbar-fill" id="sa-pbar-fill"></div></div></div>
-  <div class="sa-grid" id="sa-grid"></div>
-</div><!-- /tab-analyse -->
-
 </body>
 </html>
