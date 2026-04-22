@@ -8,15 +8,15 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; }
+html, body { height: 100%; width: 100%; overflow: hidden; }
 body { font-family: Arial, Helvetica, sans-serif; background: #f4f4f0; color: #0a0f1e;
-  display: flex; flex-direction: column; overflow: hidden; }
+  position: relative; }
 header { background: #0a0f1e; color: white; padding: 14px 24px; display: flex; align-items: center; gap: 16px; border-left: 5px solid #CC0000; }
 header h1 { font-size: 18px; font-weight: 500; }
 header span { font-size: 12px; color: #888; letter-spacing: 1px; }
-#app { display: flex; flex: 1; min-height: 0; }
+#app { display: flex; width: 100%; height: 100%; }
 #sidebar { width: 340px; min-width: 300px; background: white; border-right: 1px solid #e0e0dc; overflow-y: auto; display: flex; flex-direction: column; }
-#map { flex: 1; min-height: 0; }
+#map { flex: 1; height: 100%; min-height: 0; }
 .panel { padding: 16px; border-bottom: 1px solid #f0f0ec; }
 .panel h3 { font-size: 11px; letter-spacing: 2px; color: #CC0000; font-weight: 600; margin-bottom: 10px; text-transform: uppercase; }
 .standort-btn { width: 100%; text-align: left; padding: 10px 12px; margin-bottom: 6px; border: 1px solid #e0e0dc; border-radius: 6px; background: white; cursor: pointer; transition: all 0.15s; }
@@ -72,9 +72,10 @@ header span { font-size: 12px; color: #888; letter-spacing: 1px; }
   border-bottom: 3px solid transparent; margin-bottom: -3px; height: 100%; transition: all .2s; }
 .tab-btn:hover { color: rgba(255,255,255,.85); }
 .tab-btn.active { color: #fff; border-bottom-color: #CC0000; background: rgba(204,0,0,.12); }
-#tab-map { display: flex; flex: 1; min-height: 0; }
-#tab-analyse { display: none; flex: 1; min-height: 0; overflow-y: auto;
-  flex-direction: column; background: #f4f4f0; padding: 28px 32px; box-sizing: border-box; }
+#tab-map { position: absolute; left: 0; right: 0; bottom: 0; overflow: hidden; }
+#tab-analyse { position: absolute; left: 0; right: 0; bottom: 0; overflow-y: auto;
+  display: none; flex-direction: column; background: #f4f4f0; padding: 28px 32px;
+  box-sizing: border-box; }
 #tab-analyse.active { display: flex; }
 .sa-page-title { font-size: 20px; font-weight: 700; color: #0a0f1e; margin-bottom: 4px; }
 .sa-page-sub { font-size: 12px; color: #888; margin-bottom: 16px; line-height: 1.6; }
@@ -382,9 +383,27 @@ function applyFilters() {
   if (activeStandort) showStats(activeStandort);
 }
 
+// Set up layout BEFORE creating map - ensures #map has real dimensions
+function setupLayout() {
+  const header = document.querySelector('header');
+  const tabBar = document.querySelector('.tab-bar');
+  const topOffset = header.offsetHeight + tabBar.offsetHeight;
+  const tabMap = document.getElementById('tab-map');
+  const tabAnalyse = document.getElementById('tab-analyse');
+  tabMap.style.top = topOffset + 'px';
+  tabAnalyse.style.top = topOffset + 'px';
+}
+setupLayout();
+window.addEventListener('resize', () => {
+  setupLayout();
+  if (typeof map !== 'undefined') map.invalidateSize();
+});
+
 const map = L.map('map').setView([46.8, 8.2], 8);
-// Ensure map renders correctly after initial layout
+// Ensure map renders correctly after initial layout - multiple safety nets
+setTimeout(() => map.invalidateSize(), 0);
 setTimeout(() => map.invalidateSize(), 100);
+setTimeout(() => map.invalidateSize(), 500);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap', maxZoom: 14
 }).addTo(map);
