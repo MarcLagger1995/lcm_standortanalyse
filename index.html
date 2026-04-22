@@ -72,8 +72,7 @@ header span { font-size: 12px; color: #888; letter-spacing: 1px; }
   border-bottom: 3px solid transparent; margin-bottom: -3px; height: 100%; transition: all .2s; }
 .tab-btn:hover { color: rgba(255,255,255,.85); }
 .tab-btn.active { color: #fff; border-bottom-color: #CC0000; background: rgba(204,0,0,.12); }
-#tab-map { display: none; flex: 1; min-height: 0; }
-#tab-map.active { display: flex; }
+#tab-map { display: flex; flex: 1; min-height: 0; }
 #tab-analyse { display: none; flex: 1; min-height: 0; overflow-y: auto;
   flex-direction: column; background: #f4f4f0; padding: 28px 32px; box-sizing: border-box; }
 #tab-analyse.active { display: flex; }
@@ -384,6 +383,8 @@ function applyFilters() {
 }
 
 const map = L.map('map').setView([46.8, 8.2], 8);
+// Ensure map renders correctly after initial layout
+setTimeout(() => map.invalidateSize(), 100);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap', maxZoom: 14
 }).addTo(map);
@@ -587,10 +588,13 @@ function switchTab(t) {
   const tm = document.getElementById('tab-map');
   const ta = document.getElementById('tab-analyse');
   if (t === 'map') {
-    tm.classList.add('active'); ta.classList.remove('active');
-    setTimeout(() => map.invalidateSize(), 50);
+    tm.style.display = 'flex';
+    ta.style.display = 'none';
+    // Force Leaflet to recalculate - needs two frames to be safe
+    requestAnimationFrame(() => requestAnimationFrame(() => map.invalidateSize()));
   } else {
-    tm.classList.remove('active'); ta.classList.add('active');
+    tm.style.display = 'none';
+    ta.style.display = 'flex';
     if (!saBuilt) buildAnalyse();
   }
 }
