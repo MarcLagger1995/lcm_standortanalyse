@@ -101,6 +101,33 @@ header span { font-size: 12px; color: #888; letter-spacing: 1px; }
 .iso-compute-btn:disabled { background: #ccc; cursor: not-allowed; }
 .iso-note { font-size: 10px; color: #888; padding: 8px 10px; background: #fafaf7; border-left: 3px solid #CC0000; border-radius: 3px; margin-bottom: 12px; line-height: 1.4; }
 
+/* Overlap / Set-cover analysis */
+.overlap-block { margin-top: 20px; padding-top: 16px; border-top: 2px solid #e0e0dc; }
+.overlap-title { font-size: 11px; letter-spacing: 2px; color: #CC0000; font-weight: 600; margin-bottom: 4px; text-transform: uppercase; }
+.overlap-subtitle { font-size: 11px; color: #666; margin-bottom: 12px; line-height: 1.4; }
+.overlap-toggle { display: flex; gap: 4px; margin-bottom: 12px; background: #f0f0ec; border-radius: 6px; padding: 3px; }
+.overlap-toggle-btn { flex: 1; padding: 6px 8px; font-size: 11px; text-align: center; border: none; background: transparent; border-radius: 4px; cursor: pointer; color: #666; font-weight: 500; }
+.overlap-toggle-btn.active { background: white; color: #CC0000; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+.unique-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: white; border: 1px solid #e0e0dc; border-radius: 6px; margin-bottom: 6px; font-size: 12px; }
+.unique-row .urank { font-weight: 700; color: #CC0000; min-width: 22px; font-size: 13px; }
+.unique-row .uname { flex: 1; font-weight: 500; }
+.unique-row .ucount { font-weight: 700; color: #0a0f1e; min-width: 30px; text-align: right; }
+.unique-row .ubar { flex: 2; height: 6px; background: #f0f0ec; border-radius: 3px; overflow: hidden; }
+.unique-row .ubar > div { height: 100%; background: #CC0000; transition: width 0.3s; }
+.unique-row.greedy-row { border-left: 3px solid #2a9d8f; }
+.unique-row.greedy-row .ucount { color: #2a9d8f; }
+.overlap-matrix { width: 100%; border-collapse: collapse; font-size: 10.5px; margin-top: 4px; }
+.overlap-matrix th, .overlap-matrix td { padding: 4px 3px; text-align: center; border-bottom: 1px solid #f0f0ec; }
+.overlap-matrix th { font-weight: 600; color: #666; background: #fafaf7; position: sticky; top: 0; }
+.overlap-matrix th.rowhead, .overlap-matrix td.rowhead { text-align: left; font-weight: 600; color: #0a0f1e; padding-left: 4px; white-space: nowrap; }
+.overlap-matrix td.diag { background: #fafaf7; color: #aaa; font-style: italic; }
+.overlap-matrix td.val-hi  { background: #fce4e4; color: #CC0000; font-weight: 700; }
+.overlap-matrix td.val-med { background: #fdf1e8; color: #E87722; font-weight: 600; }
+.overlap-matrix td.val-lo  { background: #fff; color: #888; }
+.overlap-legend { font-size: 10px; color: #888; margin-top: 6px; display: flex; gap: 12px; flex-wrap: wrap; }
+.overlap-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.overlap-legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
 /* View containers */
 .view-panel { display: none; }
 .view-panel.active { display: flex; flex-direction: column; flex: 1; }
@@ -127,10 +154,10 @@ header span { font-size: 12px; color: #888; letter-spacing: 1px; }
       <h3>Einzugsgebiet</h3>
       <div class="radius-ctrl">
         <span id="radiusLabel">Fahrzeit:</span>
-        <input type="range" id="radiusSlider" min="20" max="120" value="60" step="5">
+        <input type="range" id="radiusSlider" min="5" max="120" value="60" step="5">
         <span id="radiusVal" style="font-weight:500;min-width:50px;">60 Min</span>
       </div>
-      <p style="font-size:10px;color:#aaa;margin-top:6px;" id="radiusHint">Echte Fahrzeit via OpenRouteService</p>
+      <p style="font-size:10px;color:#aaa;margin-top:6px;" id="radiusHint">Echte Fahrzeit via OpenRouteService (&gt;60 Min: zusammengesetzt aus Teil-Isochronen)</p>
       <div style="margin-top:10px;">
         <div style="font-size:10px;color:#888;font-weight:600;letter-spacing:1px;margin-bottom:4px;">ORS API KEY</div>
         <div style="display:flex;gap:6px;align-items:center;">
@@ -191,6 +218,7 @@ header span { font-size: 12px; color: #888; letter-spacing: 1px; }
         </div>
         <button class="iso-compute-btn" id="iso-compute-btn">Analyse für alle Standorte berechnen</button>
         <div id="iso-results"></div>
+        <div id="overlap-block" class="overlap-block" style="display:none;"></div>
       </div>
     </div><!-- /view-iso -->
   </div>
@@ -240,10 +268,9 @@ document.getElementById('saveKey').addEventListener('click', () => {
   }
 });
 
-// Point-in-polygon (ray casting)
-function pointInPolygon(lat, lon, polygon) {
-  // polygon is array of [lon, lat] rings (GeoJSON)
-  const coords = polygon[0]; // outer ring
+// Point-in-polygon (ray casting) for a single ring-set (GeoJSON Polygon coordinates)
+function pointInSinglePolygon(lat, lon, rings) {
+  const coords = rings[0]; // outer ring
   let inside = false;
   for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
     const xi = coords[i][0], yi = coords[i][1];
@@ -255,35 +282,125 @@ function pointInPolygon(lat, lon, polygon) {
   return inside;
 }
 
+// Point-in-polygon test that works for both Polygon and MultiPolygon geometries.
+// geom.type === 'Polygon'        → coordinates: rings[]
+// geom.type === 'MultiPolygon'   → coordinates: polygons[] of rings[]
+function pointInPolygon(lat, lon, geom) {
+  if (!geom) return false;
+  if (geom.type === 'MultiPolygon') {
+    for (const rings of geom.coordinates) {
+      if (pointInSinglePolygon(lat, lon, rings)) return true;
+    }
+    return false;
+  }
+  // default: Polygon
+  return pointInSinglePolygon(lat, lon, geom.coordinates);
+}
+
+const ORS_MAX_MINUTES_PER_CALL = 60; // Free-Tier limit: driving-car, 3600 s
+
+// Low-level single ORS call. Accepts up to 5 locations; returns feature list.
+async function _orsIsochronesRaw(locations, minutes) {
+  const url = 'https://api.openrouteservice.org/v2/isochrones/driving-car';
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': orsApiKey },
+    body: JSON.stringify({
+      locations,                       // [[lon,lat], ...]
+      range: [Math.min(minutes, ORS_MAX_MINUTES_PER_CALL) * 60],
+      range_type: 'time',
+      smoothing: 0.25
+    })
+  });
+  if (!resp.ok) {
+    let msg = String(resp.status);
+    try { const e = await resp.json(); msg = e.error?.message || msg; } catch(_) {}
+    throw new Error(msg);
+  }
+  const data = await resp.json();
+  return data.features || [];
+}
+
+// Sample N points evenly around the outer ring of a Polygon/MultiPolygon
+// (used as seed points for chained isochrones > 60 min)
+function sampleRingPoints(geom, n) {
+  // pick the outer ring with most vertices (typically the only one for small isos)
+  let bestRing = null;
+  const rings = [];
+  if (geom.type === 'MultiPolygon') geom.coordinates.forEach(p => rings.push(p[0]));
+  else rings.push(geom.coordinates[0]);
+  rings.forEach(r => { if (!bestRing || r.length > bestRing.length) bestRing = r; });
+  if (!bestRing) return [];
+  const pts = [];
+  const step = bestRing.length / n;
+  for (let i = 0; i < n; i++) {
+    const [lon, lat] = bestRing[Math.floor(i * step)];
+    pts.push([lon, lat]);
+  }
+  return pts;
+}
+
+// Public: fetch an isochrone for `minutes` from (lat, lon).
+// For minutes <= 60, a single ORS call.
+// For minutes > 60, chains: first 60-min iso from origin, then additional
+// `minutes - 60` isos from points sampled on the rim, all unioned into a
+// GeoJSON MultiPolygon (overlapping polygons, no true union, but point-in-any
+// works correctly for club counting and visual display).
 async function fetchIsochrone(lat, lon, minutes) {
   if (!orsApiKey) return null;
-  const url = 'https://api.openrouteservice.org/v2/isochrones/driving-car';
   try {
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': orsApiKey
-      },
-      body: JSON.stringify({
-        locations: [[lon, lat]],
-        range: [minutes * 60],
-        range_type: 'time',
-        smoothing: 0.25
-      })
+    const origin = [lon, lat];
+
+    // Step 1: base isochrone (up to 60 min)
+    const baseMin = Math.min(minutes, ORS_MAX_MINUTES_PER_CALL);
+    const baseFeat = await _orsIsochronesRaw([origin], baseMin);
+    if (!baseFeat.length) return null;
+    const polygons = [];
+    baseFeat.forEach(f => {
+      if (!f.geometry) return;
+      if (f.geometry.type === 'MultiPolygon') f.geometry.coordinates.forEach(p => polygons.push(p));
+      else polygons.push(f.geometry.coordinates);
     });
-    if (!resp.ok) {
-      const err = await resp.json();
-      console.error('ORS error:', err);
-      document.getElementById('orsStatus').textContent = 'API-Fehler: ' + (err.error?.message || resp.status);
-      document.getElementById('orsStatus').style.color = '#CC0000';
-      return null;
+
+    // If requested time fits in a single call, we are done.
+    const remaining = minutes - baseMin;
+    if (remaining <= 0) {
+      return polygons.length === 1
+        ? { type: 'Polygon', coordinates: polygons[0] }
+        : { type: 'MultiPolygon', coordinates: polygons };
     }
-    const data = await resp.json();
-    return data.features?.[0]?.geometry || null;
+
+    // Step 2: from the rim of the base iso, fan out with `remaining` minutes.
+    // 12 seed points give reasonable coverage without too many calls.
+    const seedCount = 12;
+    const seeds = sampleRingPoints(
+      polygons.length === 1 ? { type:'Polygon', coordinates: polygons[0] }
+                            : { type:'MultiPolygon', coordinates: polygons },
+      seedCount
+    );
+
+    // ORS accepts up to 5 locations per request → chunk.
+    const CHUNK = 5;
+    for (let i = 0; i < seeds.length; i += CHUNK) {
+      const chunk = seeds.slice(i, i + CHUNK);
+      try {
+        const feats = await _orsIsochronesRaw(chunk, Math.min(remaining, ORS_MAX_MINUTES_PER_CALL));
+        feats.forEach(f => {
+          if (!f.geometry) return;
+          if (f.geometry.type === 'MultiPolygon') f.geometry.coordinates.forEach(p => polygons.push(p));
+          else polygons.push(f.geometry.coordinates);
+        });
+      } catch (e) {
+        console.warn('ORS seed chunk failed, continuing:', e.message);
+      }
+      // small pause to stay friendly to rate limits
+      await new Promise(r => setTimeout(r, 250));
+    }
+
+    return { type: 'MultiPolygon', coordinates: polygons };
   } catch(e) {
     console.error('ORS fetch error:', e);
-    document.getElementById('orsStatus').textContent = 'Verbindungsfehler';
+    document.getElementById('orsStatus').textContent = 'API-Fehler: ' + e.message;
     document.getElementById('orsStatus').style.color = '#CC0000';
     return null;
   }
@@ -399,7 +516,7 @@ function drawClubs(center) {
     if (!center) {
       inRange = true;
     } else if (isochronePolygon && orsMode) {
-      inRange = pointInPolygon(c.latitude, c.longitude, isochronePolygon.coordinates);
+      inRange = pointInPolygon(c.latitude, c.longitude, isochronePolygon);
     } else {
       inRange = haversine(c.latitude, c.longitude, center.lat, center.lon) <= currentRadius;
     }
@@ -432,7 +549,7 @@ function showStats(s) {
   const filtered = getFilteredClubs();
   const nearby = filtered.filter(c => {
     if (isochronePolygon && orsMode) {
-      return pointInPolygon(c.latitude, c.longitude, isochronePolygon.coordinates);
+      return pointInPolygon(c.latitude, c.longitude, isochronePolygon);
     }
     return haversine(c.latitude, c.longitude, s.lat, s.lon) <= currentRadius;
   });
@@ -532,7 +649,10 @@ async function selectStandort(s, i) {
   map.setView([s.lat, s.lon], 9);
 
   if (orsMode && orsApiKey) {
-    document.getElementById('orsStatus').textContent = 'Berechne Isochrone…';
+    const msg = currentRadius > ORS_MAX_MINUTES_PER_CALL
+      ? `Berechne Isochrone (${currentRadius} Min, mehrteilig)…`
+      : 'Berechne Isochrone…';
+    document.getElementById('orsStatus').textContent = msg;
     document.getElementById('orsStatus').style.color = '#E87722';
     const geom = await fetchIsochrone(s.lat, s.lon, currentRadius);
     if (geom) {
@@ -680,6 +800,201 @@ function renderIsoResults() {
       focusIsoStandort(idx);
     });
   });
+
+  // Overlap-/Set-Cover-Analyse aktualisieren (zeigt sich, sobald genug Daten da sind)
+  renderOverlapAnalysis();
+}
+
+// State für Overlap-View: welche Fahrzeit als Basis (45 oder 60 Min)
+let overlapMinutes = 60;
+
+// Baut pro Standort ein Set der Clubnummern ohne LCM im Einzugsgebiet auf
+function collectReachableSetsNoLcm(minutes) {
+  const sets = [];
+  STANDORTE.forEach(s => {
+    const entry = isoCache[`${s.name}_${minutes}`];
+    if (entry && entry.clubs && !entry.error) {
+      const ids = new Set(entry.clubs.filter(c => c.lcm_done === 0).map(c => c.Clubnummer));
+      sets.push({ name: s.name, ids });
+    } else {
+      sets.push({ name: s.name, ids: null }); // nicht berechnet
+    }
+  });
+  return sets;
+}
+
+// Unique Coverage pro Standort = Clubs, die NUR dieser Standort erreicht
+function computeUniqueCoverage(sets) {
+  return sets.map((s, i) => {
+    if (!s.ids) return { name: s.name, unique: null, total: null };
+    let unique = 0;
+    for (const id of s.ids) {
+      let foundElsewhere = false;
+      for (let j = 0; j < sets.length; j++) {
+        if (j === i || !sets[j].ids) continue;
+        if (sets[j].ids.has(id)) { foundElsewhere = true; break; }
+      }
+      if (!foundElsewhere) unique++;
+    }
+    return { name: s.name, unique, total: s.ids.size, index: i };
+  });
+}
+
+// Greedy Set Cover: wähle iterativ den Standort, der die meisten neuen Clubs hinzufügt
+function computeGreedyCover(sets) {
+  const available = sets.map((s, i) => ({ ...s, index: i })).filter(s => s.ids);
+  const covered = new Set();
+  const order = [];
+  const remaining = [...available];
+  while (remaining.length > 0) {
+    let bestIdx = -1, bestGain = -1, bestNewIds = null;
+    for (let i = 0; i < remaining.length; i++) {
+      const s = remaining[i];
+      let gain = 0;
+      for (const id of s.ids) if (!covered.has(id)) gain++;
+      if (gain > bestGain) { bestGain = gain; bestIdx = i; bestNewIds = s.ids; }
+    }
+    if (bestGain <= 0) break; // nichts mehr hinzuzufügen
+    const picked = remaining.splice(bestIdx, 1)[0];
+    for (const id of bestNewIds) covered.add(id);
+    order.push({ name: picked.name, gain: bestGain, cumulative: covered.size, index: picked.index });
+  }
+  return { order, totalCovered: covered.size };
+}
+
+// Pairwise-Overlap-Matrix: wie viele Clubs teilen sich je zwei Standorte
+function computeOverlapMatrix(sets) {
+  const n = sets.length;
+  const m = Array.from({ length: n }, () => new Array(n).fill(null));
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      if (!sets[i].ids || !sets[j].ids) continue;
+      if (i === j) { m[i][j] = sets[i].ids.size; continue; }
+      let overlap = 0;
+      for (const id of sets[i].ids) if (sets[j].ids.has(id)) overlap++;
+      m[i][j] = overlap;
+    }
+  }
+  return m;
+}
+
+function renderOverlapAnalysis() {
+  const host = document.getElementById('overlap-block');
+  if (!host) return;
+
+  const sets = collectReachableSetsNoLcm(overlapMinutes);
+  const haveData = sets.some(s => s.ids && s.ids.size > 0);
+  if (!haveData) { host.style.display = 'none'; return; }
+  host.style.display = 'block';
+
+  const unique = computeUniqueCoverage(sets).filter(u => u.unique !== null);
+  const uniqueSorted = [...unique].sort((a, b) => b.unique - a.unique);
+  const maxUnique = Math.max(1, ...uniqueSorted.map(u => u.unique));
+
+  const greedy = computeGreedyCover(sets);
+  const matrix = computeOverlapMatrix(sets);
+
+  // Farbschwellen für Matrix (relativ zum Zeilenmaximum ohne Diagonale)
+  const classify = (row, v, diag) => {
+    if (v === null) return '';
+    if (diag) return 'diag';
+    const offDiag = row.filter((x, k) => x !== null && k !== row.indexOf(diag)).filter(x => x !== diag);
+    const max = Math.max(1, ...row.filter((x, k) => x !== null));
+    const relevantMax = Math.max(1, ...row.filter(x => x !== null && x !== diag));
+    if (v === 0) return 'val-lo';
+    if (v >= relevantMax * 0.66) return 'val-hi';
+    if (v >= relevantMax * 0.33) return 'val-med';
+    return 'val-lo';
+  };
+
+  host.innerHTML = `
+    <div class="overlap-title">Überlappung & Netzplanung</div>
+    <div class="overlap-subtitle">
+      Basis: Clubs ohne LCM im Einzugsgebiet. Zeigt, welche Standorte sich strategisch ergänzen und wie viele Clubs inkrementell hinzukommen.
+    </div>
+
+    <div class="overlap-toggle">
+      <button class="overlap-toggle-btn ${overlapMinutes === 45 ? 'active' : ''}" data-min="45">45 Min Basis</button>
+      <button class="overlap-toggle-btn ${overlapMinutes === 60 ? 'active' : ''}" data-min="60">60 Min Basis</button>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#666;margin:14px 0 6px;">UNIQUE COVERAGE</div>
+    <div style="font-size:10.5px;color:#888;margin-bottom:8px;line-height:1.4;">
+      Clubs, die nur dieser Standort im ${overlapMinutes}-Min-Einzug erreicht (von keinem anderen der 8 Standorte).
+    </div>
+    ${uniqueSorted.map((u, rank) => `
+      <div class="unique-row">
+        <span class="urank">${rank + 1}.</span>
+        <span class="uname">${u.name}</span>
+        <span class="ubar"><div style="width:${(u.unique / maxUnique * 100).toFixed(1)}%"></div></span>
+        <span class="ucount">${u.unique}<span style="font-weight:400;font-size:10px;color:#aaa;"> / ${u.total}</span></span>
+      </div>
+    `).join('')}
+
+    <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#666;margin:18px 0 6px;">OPTIMALE STANDORT-REIHENFOLGE</div>
+    <div style="font-size:10.5px;color:#888;margin-bottom:8px;line-height:1.4;">
+      Greedy Set-Cover: jeder nächste Standort bringt die meisten Clubs, die die bisherigen noch nicht erreicht haben.
+      Mit ${greedy.order.length} Standorten werden insgesamt <b>${greedy.totalCovered}</b> Clubs ohne LCM erreicht.
+    </div>
+    ${greedy.order.map((g, rank) => `
+      <div class="unique-row greedy-row">
+        <span class="urank">${rank + 1}.</span>
+        <span class="uname">${g.name}</span>
+        <span class="ubar"><div style="width:${(g.cumulative / greedy.totalCovered * 100).toFixed(1)}%"></div></span>
+        <span class="ucount">+${g.gain}<span style="font-weight:400;font-size:10px;color:#aaa;"> · Σ ${g.cumulative}</span></span>
+      </div>
+    `).join('')}
+
+    <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#666;margin:18px 0 6px;">ÜBERLAPPUNGS-MATRIX</div>
+    <div style="font-size:10.5px;color:#888;margin-bottom:8px;line-height:1.4;">
+      Anzahl gemeinsamer Clubs (ohne LCM) zwischen je zwei Standorten im ${overlapMinutes}-Min-Einzug. Diagonale = Gesamt pro Standort.
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="overlap-matrix">
+        <thead>
+          <tr>
+            <th class="rowhead"></th>
+            ${sets.map(s => `<th>${s.name.substring(0, 4)}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${sets.map((rowStandort, i) => {
+            const row = matrix[i];
+            const diag = row[i];
+            return `
+              <tr>
+                <td class="rowhead">${rowStandort.name}</td>
+                ${row.map((v, j) => {
+                  if (v === null) return '<td class="val-lo">–</td>';
+                  if (i === j) return `<td class="diag">${v}</td>`;
+                  // Farbe relativ zum max off-diagonal in dieser Zeile
+                  const offDiag = row.filter((x, k) => x !== null && k !== i);
+                  const mx = Math.max(1, ...offDiag);
+                  let cls = 'val-lo';
+                  if (v >= mx * 0.66 && v > 0) cls = 'val-hi';
+                  else if (v >= mx * 0.33 && v > 0) cls = 'val-med';
+                  return `<td class="${cls}">${v}</td>`;
+                }).join('')}
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="overlap-legend">
+      <span><i style="background:#fce4e4"></i>Hohe Überlappung</span>
+      <span><i style="background:#fdf1e8"></i>Mittel</span>
+      <span><i style="background:#fff;border:1px solid #e0e0dc"></i>Gering</span>
+    </div>
+  `;
+
+  // Toggle-Buttons verdrahten
+  host.querySelectorAll('.overlap-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      overlapMinutes = parseInt(btn.dataset.min);
+      renderOverlapAnalysis();
+    });
+  });
 }
 
 function renderIsoZone(entry, minutes) {
@@ -718,7 +1033,7 @@ function renderIsoZone(entry, minutes) {
 // Zählt Clubs innerhalb eines Isochronen-Polygons (berücksichtigt aktuelle Sidebar-Filter)
 function countClubsInsidePolygon(polygonGeom) {
   const filtered = getFilteredClubs();
-  return filtered.filter(c => pointInPolygon(c.latitude, c.longitude, polygonGeom.coordinates));
+  return filtered.filter(c => pointInPolygon(c.latitude, c.longitude, polygonGeom));
 }
 
 // Zeichnet alle berechneten Isochronen auf der Karte (während iso-view aktiv ist)
