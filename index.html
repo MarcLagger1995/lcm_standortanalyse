@@ -186,8 +186,8 @@ header span { font-size: 12px; color: #888; letter-spacing: 1px; }
         <h3>Isochronen-Analyse pro Standort</h3>
         <div class="iso-note">
           Berechnet für jeden Standort separate Einzugsgebiete bei <b>45</b> und <b>60</b> Minuten Fahrzeit (Auto, via OpenRouteService).
-          Die potenziellen Teilnehmerzahlen gehen von <b>1 Club = 1 potenzieller Teilnehmer</b> aus.
-          Worst = 5 %, Normal = 10 %, Best = 15 % der Clubs im Einzugsgebiet.
+          Ausgangslage für die Szenarien sind die Clubs im Einzugsgebiet, die <b>noch kein LCM absolviert</b> haben (1 Club = 1 potenzieller Teilnehmer).
+          Worst = 5 %, Normal = 10 %, Best = 15 %.
         </div>
         <button class="iso-compute-btn" id="iso-compute-btn">Analyse für alle Standorte berechnen</button>
         <div id="iso-results"></div>
@@ -447,9 +447,17 @@ function showStats(s) {
   nearby.forEach(c => { segCounts[c.Segment] = (segCounts[c.Segment]||0)+1; });
   const segSorted = Object.entries(segCounts).sort((a,b)=>b[1]-a[1]);
 
-  // Top Clubs: komplette Liste (keine slice(0,15) Begrenzung mehr)
-  // Sortierung beibehalten: aus notDone nur Prio 5, bestehende Reihenfolge der CLUBS-Daten
-  const topClubs = notDone.filter(c => c.prio === 5);
+  // Zwei separate Listen in der Standortanalyse:
+  //  1) Alle Clubs im Radius ohne LCM   (= notDone)
+  //  2) Schnittmenge: Prio 5 + kein LCM (= highPrioNotDone)
+  // Innerhalb beider Listen nach Priorität absteigend, dann alphabetisch
+  const sortClubs = arr => [...arr].sort((a, b) => (b.prio - a.prio) || a.Club.localeCompare(b.Club, 'de'));
+  const clubsNoLcm          = sortClubs(notDone);
+  const clubsPrio5NoLcm     = sortClubs(highPrioNotDone);
+
+  const renderClubList = (arr) => arr.map(c =>
+    `<div class="club-item"><span>${c.Club}</span><span class="cn">${c.Ort}</span></div>`
+  ).join('');
 
   const af = activeMapFilter;
   const cls = (key) => 'stat-card' + (af === key ? ' active-filter' : '');
@@ -477,10 +485,15 @@ function showStats(s) {
       const p = CLUBS.find(c=>c.Segment===seg)?.prio||1;
       return `<div class="seg-row"><span style="display:flex;align-items:center"><span class="seg-dot prio${p}"></span><span style="font-size:11px">${seg}</span></span><span style="font-weight:600;font-size:12px">${n}</span></div>`;
     }).join('')}
-    ${topClubs.length > 0 ? `
-    <div style="font-size:11px;color:#888;margin:12px 0 4px;font-weight:600;letter-spacing:1px;">TOP CLUBS (Prio 5, kein LCM) · ${topClubs.length}</div>
+    ${clubsNoLcm.length > 0 ? `
+    <div style="font-size:11px;color:#888;margin:12px 0 4px;font-weight:600;letter-spacing:1px;">CLUBS OHNE LCM · ${clubsNoLcm.length}</div>
     <div class="club-list unlimited">
-    ${topClubs.map(c=>`<div class="club-item"><span>${c.Club}</span><span class="cn">${c.Ort}</span></div>`).join('')}
+    ${renderClubList(clubsNoLcm)}
+    </div>` : ''}
+    ${clubsPrio5NoLcm.length > 0 ? `
+    <div style="font-size:11px;color:#888;margin:12px 0 4px;font-weight:600;letter-spacing:1px;">PRIO 5 + KEIN LCM · ${clubsPrio5NoLcm.length}</div>
+    <div class="club-list unlimited">
+    ${renderClubList(clubsPrio5NoLcm)}
     </div>` : ''}
   `;
 
@@ -680,12 +693,16 @@ function renderIsoZone(entry, minutes) {
   if (entry.error) {
     return `<div class="iso-zone ${colorCls}"><div class="iso-zone-head"><span>${minutes} Min</span><span class="zone-clubs" style="color:#CC0000;font-size:11px">${entry.error}</span></div></div>`;
   }
-  const n = entry.clubs.length;
-  // 1 Club = 1 potenzieller Teilnehmer → Basis ist direkt die Anzahl Clubs
-  const basis = n;
+  const nTotal  = entry.clubs.length;
+  const nNoLcm  = entry.clubs.filter(c => c.lcm_done === 0).length;
+  // Ausgangslage für die Szenarien: nur Clubs ohne LCM (= potenzielle Teilnehmer)
+  const basis = nNoLcm;
   return `
     <div class="iso-zone ${colorCls}">
-      <div class="iso-zone-head"><span>${minutes} Min Fahrzeit</span><span class="zone-clubs">${n} Clubs</span></div>
+      <div class="iso-zone-head">
+        <span>${minutes} Min Fahrzeit</span>
+        <span class="zone-clubs">${nNoLcm} <span style="color:#888;font-weight:500;font-size:11px">ohne LCM</span> <span style="color:#aaa;font-weight:400;font-size:11px">· ${nTotal} gesamt</span></span>
+      </div>
       <div class="iso-scenarios">
         ${SCENARIOS.map(sc => `
           <div class="iso-scenario ${sc.key}">
