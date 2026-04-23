@@ -127,10 +127,10 @@ header span { font-size: 12px; color: #888; letter-spacing: 1px; }
       <h3>Einzugsgebiet</h3>
       <div class="radius-ctrl">
         <span id="radiusLabel">Fahrzeit:</span>
-        <input type="range" id="radiusSlider" min="5" max="120" value="60" step="5">
+        <input type="range" id="radiusSlider" min="20" max="120" value="60" step="5">
         <span id="radiusVal" style="font-weight:500;min-width:50px;">60 Min</span>
       </div>
-      <p style="font-size:10px;color:#aaa;margin-top:6px;" id="radiusHint">Echte Fahrzeit via OpenRouteService (&gt;60 Min: zusammengesetzt aus Teil-Isochronen)</p>
+      <p style="font-size:10px;color:#aaa;margin-top:6px;" id="radiusHint">Echte Fahrzeit via OpenRouteService</p>
       <div style="margin-top:10px;">
         <div style="font-size:10px;color:#888;font-weight:600;letter-spacing:1px;margin-bottom:4px;">ORS API KEY</div>
         <div style="display:flex;gap:6px;align-items:center;">
@@ -240,9 +240,10 @@ document.getElementById('saveKey').addEventListener('click', () => {
   }
 });
 
-// Point-in-polygon (ray casting) for a single ring-set (GeoJSON Polygon coordinates)
-function pointInSinglePolygon(lat, lon, rings) {
-  const coords = rings[0]; // outer ring
+// Point-in-polygon (ray casting)
+function pointInPolygon(lat, lon, polygon) {
+  // polygon is array of [lon, lat] rings (GeoJSON)
+  const coords = polygon[0]; // outer ring
   let inside = false;
   for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
     const xi = coords[i][0], yi = coords[i][1];
@@ -254,125 +255,35 @@ function pointInSinglePolygon(lat, lon, rings) {
   return inside;
 }
 
-// Point-in-polygon test that works for both Polygon and MultiPolygon geometries.
-// geom.type === 'Polygon'        → coordinates: rings[]
-// geom.type === 'MultiPolygon'   → coordinates: polygons[] of rings[]
-function pointInPolygon(lat, lon, geom) {
-  if (!geom) return false;
-  if (geom.type === 'MultiPolygon') {
-    for (const rings of geom.coordinates) {
-      if (pointInSinglePolygon(lat, lon, rings)) return true;
-    }
-    return false;
-  }
-  // default: Polygon
-  return pointInSinglePolygon(lat, lon, geom.coordinates);
-}
-
-const ORS_MAX_MINUTES_PER_CALL = 60; // Free-Tier limit: driving-car, 3600 s
-
-// Low-level single ORS call. Accepts up to 5 locations; returns feature list.
-async function _orsIsochronesRaw(locations, minutes) {
-  const url = 'https://api.openrouteservice.org/v2/isochrones/driving-car';
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': orsApiKey },
-    body: JSON.stringify({
-      locations,                       // [[lon,lat], ...]
-      range: [Math.min(minutes, ORS_MAX_MINUTES_PER_CALL) * 60],
-      range_type: 'time',
-      smoothing: 0.25
-    })
-  });
-  if (!resp.ok) {
-    let msg = String(resp.status);
-    try { const e = await resp.json(); msg = e.error?.message || msg; } catch(_) {}
-    throw new Error(msg);
-  }
-  const data = await resp.json();
-  return data.features || [];
-}
-
-// Sample N points evenly around the outer ring of a Polygon/MultiPolygon
-// (used as seed points for chained isochrones > 60 min)
-function sampleRingPoints(geom, n) {
-  // pick the outer ring with most vertices (typically the only one for small isos)
-  let bestRing = null;
-  const rings = [];
-  if (geom.type === 'MultiPolygon') geom.coordinates.forEach(p => rings.push(p[0]));
-  else rings.push(geom.coordinates[0]);
-  rings.forEach(r => { if (!bestRing || r.length > bestRing.length) bestRing = r; });
-  if (!bestRing) return [];
-  const pts = [];
-  const step = bestRing.length / n;
-  for (let i = 0; i < n; i++) {
-    const [lon, lat] = bestRing[Math.floor(i * step)];
-    pts.push([lon, lat]);
-  }
-  return pts;
-}
-
-// Public: fetch an isochrone for `minutes` from (lat, lon).
-// For minutes <= 60, a single ORS call.
-// For minutes > 60, chains: first 60-min iso from origin, then additional
-// `minutes - 60` isos from points sampled on the rim, all unioned into a
-// GeoJSON MultiPolygon (overlapping polygons, no true union, but point-in-any
-// works correctly for club counting and visual display).
 async function fetchIsochrone(lat, lon, minutes) {
   if (!orsApiKey) return null;
+  const url = 'https://api.openrouteservice.org/v2/isochrones/driving-car';
   try {
-    const origin = [lon, lat];
-
-    // Step 1: base isochrone (up to 60 min)
-    const baseMin = Math.min(minutes, ORS_MAX_MINUTES_PER_CALL);
-    const baseFeat = await _orsIsochronesRaw([origin], baseMin);
-    if (!baseFeat.length) return null;
-    const polygons = [];
-    baseFeat.forEach(f => {
-      if (!f.geometry) return;
-      if (f.geometry.type === 'MultiPolygon') f.geometry.coordinates.forEach(p => polygons.push(p));
-      else polygons.push(f.geometry.coordinates);
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': orsApiKey
+      },
+      body: JSON.stringify({
+        locations: [[lon, lat]],
+        range: [minutes * 60],
+        range_type: 'time',
+        smoothing: 0.25
+      })
     });
-
-    // If requested time fits in a single call, we are done.
-    const remaining = minutes - baseMin;
-    if (remaining <= 0) {
-      return polygons.length === 1
-        ? { type: 'Polygon', coordinates: polygons[0] }
-        : { type: 'MultiPolygon', coordinates: polygons };
+    if (!resp.ok) {
+      const err = await resp.json();
+      console.error('ORS error:', err);
+      document.getElementById('orsStatus').textContent = 'API-Fehler: ' + (err.error?.message || resp.status);
+      document.getElementById('orsStatus').style.color = '#CC0000';
+      return null;
     }
-
-    // Step 2: from the rim of the base iso, fan out with `remaining` minutes.
-    // 12 seed points give reasonable coverage without too many calls.
-    const seedCount = 12;
-    const seeds = sampleRingPoints(
-      polygons.length === 1 ? { type:'Polygon', coordinates: polygons[0] }
-                            : { type:'MultiPolygon', coordinates: polygons },
-      seedCount
-    );
-
-    // ORS accepts up to 5 locations per request → chunk.
-    const CHUNK = 5;
-    for (let i = 0; i < seeds.length; i += CHUNK) {
-      const chunk = seeds.slice(i, i + CHUNK);
-      try {
-        const feats = await _orsIsochronesRaw(chunk, Math.min(remaining, ORS_MAX_MINUTES_PER_CALL));
-        feats.forEach(f => {
-          if (!f.geometry) return;
-          if (f.geometry.type === 'MultiPolygon') f.geometry.coordinates.forEach(p => polygons.push(p));
-          else polygons.push(f.geometry.coordinates);
-        });
-      } catch (e) {
-        console.warn('ORS seed chunk failed, continuing:', e.message);
-      }
-      // small pause to stay friendly to rate limits
-      await new Promise(r => setTimeout(r, 250));
-    }
-
-    return { type: 'MultiPolygon', coordinates: polygons };
+    const data = await resp.json();
+    return data.features?.[0]?.geometry || null;
   } catch(e) {
     console.error('ORS fetch error:', e);
-    document.getElementById('orsStatus').textContent = 'API-Fehler: ' + e.message;
+    document.getElementById('orsStatus').textContent = 'Verbindungsfehler';
     document.getElementById('orsStatus').style.color = '#CC0000';
     return null;
   }
@@ -488,7 +399,7 @@ function drawClubs(center) {
     if (!center) {
       inRange = true;
     } else if (isochronePolygon && orsMode) {
-      inRange = pointInPolygon(c.latitude, c.longitude, isochronePolygon);
+      inRange = pointInPolygon(c.latitude, c.longitude, isochronePolygon.coordinates);
     } else {
       inRange = haversine(c.latitude, c.longitude, center.lat, center.lon) <= currentRadius;
     }
@@ -521,7 +432,7 @@ function showStats(s) {
   const filtered = getFilteredClubs();
   const nearby = filtered.filter(c => {
     if (isochronePolygon && orsMode) {
-      return pointInPolygon(c.latitude, c.longitude, isochronePolygon);
+      return pointInPolygon(c.latitude, c.longitude, isochronePolygon.coordinates);
     }
     return haversine(c.latitude, c.longitude, s.lat, s.lon) <= currentRadius;
   });
@@ -621,10 +532,7 @@ async function selectStandort(s, i) {
   map.setView([s.lat, s.lon], 9);
 
   if (orsMode && orsApiKey) {
-    const msg = currentRadius > ORS_MAX_MINUTES_PER_CALL
-      ? `Berechne Isochrone (${currentRadius} Min, mehrteilig)…`
-      : 'Berechne Isochrone…';
-    document.getElementById('orsStatus').textContent = msg;
+    document.getElementById('orsStatus').textContent = 'Berechne Isochrone…';
     document.getElementById('orsStatus').style.color = '#E87722';
     const geom = await fetchIsochrone(s.lat, s.lon, currentRadius);
     if (geom) {
@@ -810,7 +718,7 @@ function renderIsoZone(entry, minutes) {
 // Zählt Clubs innerhalb eines Isochronen-Polygons (berücksichtigt aktuelle Sidebar-Filter)
 function countClubsInsidePolygon(polygonGeom) {
   const filtered = getFilteredClubs();
-  return filtered.filter(c => pointInPolygon(c.latitude, c.longitude, polygonGeom));
+  return filtered.filter(c => pointInPolygon(c.latitude, c.longitude, polygonGeom.coordinates));
 }
 
 // Zeichnet alle berechneten Isochronen auf der Karte (während iso-view aktiv ist)
