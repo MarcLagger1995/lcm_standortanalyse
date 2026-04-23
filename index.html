@@ -55,6 +55,55 @@ header span { font-size: 12px; color: #888; letter-spacing: 1px; }
 .filter-chip.prio1.active { background: #bbb; border-color: #bbb; }
 .filter-reset { font-size: 10px; color: #CC0000; cursor: pointer; text-decoration: underline; margin-top: 4px; display: inline-block; }
 .filter-count { font-size: 10px; color: #aaa; margin-top: 6px; }
+
+/* Main tabs */
+.main-tabs { display: flex; border-bottom: 1px solid #e0e0dc; background: #fafaf7; }
+.main-tab { flex: 1; padding: 12px 10px; text-align: center; font-size: 12px; font-weight: 500; color: #666; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.15s; }
+.main-tab:hover { background: #fff; color: #CC0000; }
+.main-tab.active { background: white; color: #CC0000; border-bottom-color: #CC0000; font-weight: 600; }
+
+/* Clickable stat cards (filter tabs on map) */
+.stat-card { background: #f8f8f5; border-radius: 6px; padding: 10px 12px; cursor: pointer; transition: all 0.15s; border: 2px solid transparent; }
+.stat-card:hover { background: #f0f0ec; }
+.stat-card.active-filter { background: #fff5f5; border-color: #CC0000; box-shadow: 0 0 0 1px #CC0000 inset; }
+.stat-card.active-filter .stat-val { color: #CC0000; }
+.map-filter-hint { font-size: 10px; color: #888; margin: 8px 0 4px; display: flex; justify-content: space-between; align-items: center; }
+.map-filter-reset { font-size: 10px; color: #CC0000; cursor: pointer; text-decoration: underline; }
+.map-filter-reset:hover { color: #990000; }
+
+/* Unlimited top-clubs list */
+.club-list.unlimited { max-height: 260px; }
+
+/* Isochrone analysis view */
+#iso-content { padding: 16px; }
+#iso-content h3 { font-size: 11px; letter-spacing: 2px; color: #CC0000; font-weight: 600; margin-bottom: 12px; text-transform: uppercase; }
+.iso-standort-card { background: white; border: 1px solid #e0e0dc; border-radius: 6px; padding: 12px; margin-bottom: 12px; transition: all 0.15s; }
+.iso-standort-card:hover { border-color: #CC0000; }
+.iso-standort-card.loading { opacity: 0.6; }
+.iso-standort-card.active { border-color: #CC0000; box-shadow: 0 0 0 1px #CC0000; }
+.iso-standort-name { font-size: 14px; font-weight: 600; color: #0a0f1e; margin-bottom: 2px; cursor: pointer; }
+.iso-standort-desc { font-size: 10px; color: #888; margin-bottom: 10px; }
+.iso-zone { margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0f0ec; }
+.iso-zone-head { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: #666; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+.iso-zone-head .zone-clubs { color: #CC0000; font-size: 14px; font-weight: 600; letter-spacing: 0; }
+.iso-zone-45 .iso-zone-head { color: #E87722; }
+.iso-zone-60 .iso-zone-head { color: #CC0000; }
+.iso-scenarios { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.iso-scenario { background: #f8f8f5; border-radius: 4px; padding: 6px 8px; text-align: center; }
+.iso-scenario-label { font-size: 9px; color: #888; letter-spacing: 0.5px; text-transform: uppercase; }
+.iso-scenario-val { font-size: 15px; font-weight: 600; color: #0a0f1e; margin-top: 1px; }
+.iso-scenario.worst .iso-scenario-val { color: #999; }
+.iso-scenario.normal .iso-scenario-val { color: #E87722; }
+.iso-scenario.best .iso-scenario-val { color: #2a9d8f; }
+.iso-progress { font-size: 11px; color: #aaa; padding: 8px 0; }
+.iso-compute-btn { width: 100%; padding: 10px; background: #0a0f1e; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; letter-spacing: 0.5px; margin-bottom: 12px; transition: all 0.15s; }
+.iso-compute-btn:hover { background: #CC0000; }
+.iso-compute-btn:disabled { background: #ccc; cursor: not-allowed; }
+.iso-note { font-size: 10px; color: #888; padding: 8px 10px; background: #fafaf7; border-left: 3px solid #CC0000; border-radius: 3px; margin-bottom: 12px; line-height: 1.4; }
+
+/* View containers */
+.view-panel { display: none; }
+.view-panel.active { display: flex; flex-direction: column; flex: 1; }
 </style>
 </head>
 <body>
@@ -67,6 +116,13 @@ header span { font-size: 12px; color: #888; letter-spacing: 1px; }
 </header>
 <div id="app">
   <div id="sidebar">
+    <div class="main-tabs">
+      <div class="main-tab active" data-view="single">Einzelstandort</div>
+      <div class="main-tab" data-view="iso">45 / 60 Min Analyse</div>
+    </div>
+
+    <!-- VIEW 1: Einzelstandort (bestehende Logik) -->
+    <div class="view-panel active" id="view-single">
     <div class="panel">
       <h3>Einzugsgebiet</h3>
       <div class="radius-ctrl">
@@ -122,6 +178,21 @@ header span { font-size: 12px; color: #888; letter-spacing: 1px; }
       <div class="legend-item"><span class="seg-dot prio2"></span>Tiefe Prio (2) – Touren & Gönner</div>
       <div class="legend-item"><span class="seg-dot prio1"></span>Keine Prio (1) – Potenziell inaktiv</div>
     </div>
+    </div><!-- /view-single -->
+
+    <!-- VIEW 2: 45 / 60 Min Isochronen-Analyse -->
+    <div class="view-panel" id="view-iso">
+      <div id="iso-content">
+        <h3>Isochronen-Analyse pro Standort</h3>
+        <div class="iso-note">
+          Berechnet für jeden Standort separate Einzugsgebiete bei <b>45</b> und <b>60</b> Minuten Fahrzeit (Auto, via OpenRouteService).
+          Die potenziellen Teilnehmerzahlen gehen von <b>1 Club = 1 potenzieller Teilnehmer</b> aus.
+          Worst = 5 %, Normal = 10 %, Best = 15 % der Clubs im Einzugsgebiet.
+        </div>
+        <button class="iso-compute-btn" id="iso-compute-btn">Analyse für alle Standorte berechnen</button>
+        <div id="iso-results"></div>
+      </div>
+    </div><!-- /view-iso -->
   </div>
   <div id="map"></div>
 </div>
@@ -223,6 +294,9 @@ let activePrios = new Set([1, 2, 3, 5]);
 let activeLcm = new Set([0, 1]);
 let activeSegs = new Set();
 
+// Map-filter: active quick-filter from the stat cards (null | 'radius' | 'noLcm' | 'prio5' | 'prio5NoLcm')
+let activeMapFilter = null;
+
 // Build unique segments list
 const allSegments = [...new Set(CLUBS.map(c => c.Segment))].sort();
 allSegments.forEach(seg => activeSegs.add(seg));
@@ -296,6 +370,10 @@ function applyFilters() {
   updateFilterCount();
   drawClubs(activeStandort);
   if (activeStandort) showStats(activeStandort);
+  // Wenn Iso-Analyse-View aktiv ist, Club-Zählungen gegen neue Filter aktualisieren
+  if (typeof recountIsoResultsAgainstFilters === 'function') {
+    recountIsoResultsAgainstFilters();
+  }
 }
 
 const map = L.map('map').setView([46.8, 8.2], 8);
@@ -325,8 +403,21 @@ function drawClubs(center) {
     } else {
       inRange = haversine(c.latitude, c.longitude, center.lat, center.lon) <= currentRadius;
     }
+
+    // Apply the quick map-filter coming from a stat-card click.
+    // Filter only restricts what's visible; it never shows clubs outside the range.
+    let matchesMapFilter = true;
+    if (center && activeMapFilter && inRange) {
+      switch (activeMapFilter) {
+        case 'radius':      matchesMapFilter = true; break;
+        case 'noLcm':       matchesMapFilter = c.lcm_done === 0; break;
+        case 'prio5':       matchesMapFilter = c.prio === 5; break;
+        case 'prio5NoLcm':  matchesMapFilter = c.prio === 5 && c.lcm_done === 0; break;
+      }
+    }
+
     const color = prioColors[c.prio] || '#ccc';
-    const visible = inRange && !isFiltered;
+    const visible = inRange && !isFiltered && matchesMapFilter;
     const opacity = visible ? 0.85 : 0.08;
     const radius = visible ? (c.prio === 5 ? 7 : c.prio === 3 ? 5 : 4) : 3;
     const m = L.circleMarker([c.latitude, c.longitude], {
@@ -356,15 +447,24 @@ function showStats(s) {
   nearby.forEach(c => { segCounts[c.Segment] = (segCounts[c.Segment]||0)+1; });
   const segSorted = Object.entries(segCounts).sort((a,b)=>b[1]-a[1]);
 
-  const topClubs = notDone.filter(c=>c.prio===5).slice(0,15);
+  // Top Clubs: komplette Liste (keine slice(0,15) Begrenzung mehr)
+  // Sortierung beibehalten: aus notDone nur Prio 5, bestehende Reihenfolge der CLUBS-Daten
+  const topClubs = notDone.filter(c => c.prio === 5);
+
+  const af = activeMapFilter;
+  const cls = (key) => 'stat-card' + (af === key ? ' active-filter' : '');
 
   document.getElementById('stats-title').textContent = s.name + ' – Analyse';
   document.getElementById('stats-content').innerHTML = `
     <div class="stat-grid">
-      <div class="stat-card"><div class="stat-val">${nearby.length}</div><div class="stat-label">Clubs im Radius</div></div>
-      <div class="stat-card"><div class="stat-val" style="color:#CC0000">${notDone.length}</div><div class="stat-label">Noch kein LCM</div></div>
-      <div class="stat-card"><div class="stat-val">${highPrio.length}</div><div class="stat-label">Hohe Prio (5)</div></div>
-      <div class="stat-card"><div class="stat-val" style="color:#CC0000">${highPrioNotDone.length}</div><div class="stat-label">Prio 5 + kein LCM</div></div>
+      <div class="${cls('radius')}"     data-mapfilter="radius"    title="Nur Clubs im Einzugsgebiet anzeigen"><div class="stat-val">${nearby.length}</div><div class="stat-label">Clubs im Radius</div></div>
+      <div class="${cls('noLcm')}"      data-mapfilter="noLcm"     title="Nur Clubs ohne LCM im Einzugsgebiet anzeigen"><div class="stat-val" style="color:#CC0000">${notDone.length}</div><div class="stat-label">Noch kein LCM</div></div>
+      <div class="${cls('prio5')}"      data-mapfilter="prio5"     title="Nur Prio-5-Clubs im Einzugsgebiet anzeigen"><div class="stat-val">${highPrio.length}</div><div class="stat-label">Hohe Prio (5)</div></div>
+      <div class="${cls('prio5NoLcm')}" data-mapfilter="prio5NoLcm" title="Nur Prio-5-Clubs ohne LCM im Einzugsgebiet anzeigen"><div class="stat-val" style="color:#CC0000">${highPrioNotDone.length}</div><div class="stat-label">Prio 5 + kein LCM</div></div>
+    </div>
+    <div class="map-filter-hint">
+      <span>${af ? 'Karte gefiltert · Klick auf Kachel = umschalten' : 'Tipp: Kachel anklicken filtert die Karte'}</span>
+      ${af ? '<span class="map-filter-reset" id="map-filter-reset">Alle Clubs anzeigen</span>' : ''}
     </div>
     <div style="margin-bottom:14px;">
       <div style="display:flex;justify-content:space-between;font-size:11px;color:#888;margin-bottom:4px;">
@@ -378,15 +478,36 @@ function showStats(s) {
       return `<div class="seg-row"><span style="display:flex;align-items:center"><span class="seg-dot prio${p}"></span><span style="font-size:11px">${seg}</span></span><span style="font-weight:600;font-size:12px">${n}</span></div>`;
     }).join('')}
     ${topClubs.length > 0 ? `
-    <div style="font-size:11px;color:#888;margin:12px 0 4px;font-weight:600;letter-spacing:1px;">TOP CLUBS (Prio 5, kein LCM)</div>
-    <div class="club-list">
+    <div style="font-size:11px;color:#888;margin:12px 0 4px;font-weight:600;letter-spacing:1px;">TOP CLUBS (Prio 5, kein LCM) · ${topClubs.length}</div>
+    <div class="club-list unlimited">
     ${topClubs.map(c=>`<div class="club-item"><span>${c.Club}</span><span class="cn">${c.Ort}</span></div>`).join('')}
     </div>` : ''}
   `;
+
+  // Wire up clickable stat cards
+  document.querySelectorAll('#stats-content .stat-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const key = card.dataset.mapfilter;
+      // Toggle: clicking the currently active filter clears it
+      activeMapFilter = (activeMapFilter === key) ? null : key;
+      drawClubs(activeStandort);
+      showStats(activeStandort);
+    });
+  });
+  const resetEl = document.getElementById('map-filter-reset');
+  if (resetEl) {
+    resetEl.addEventListener('click', () => {
+      activeMapFilter = null;
+      drawClubs(activeStandort);
+      showStats(activeStandort);
+    });
+  }
 }
 
 async function selectStandort(s, i) {
   activeStandort = s; activeIdx = i;
+  // Reset the quick map-filter when switching to a different standort
+  activeMapFilter = null;
   document.querySelectorAll('.standort-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(`s-${i}`).classList.add('active');
 
@@ -451,6 +572,226 @@ document.getElementById('radiusSlider').addEventListener('input', function() {
   document.getElementById('radiusVal').textContent = orsMode ? currentRadius + ' Min' : currentRadius + ' km';
   if (activeStandort) selectStandort(activeStandort, activeIdx);
 });
+
+// ============================================================
+// MAIN TABS: Einzelstandort ↔ 45/60 Min Isochronen-Analyse
+// ============================================================
+// Basis: 1 Club = 1 potenzieller Teilnehmer
+// Szenarien geben den Anteil der Clubs im Einzugsgebiet an, die tatsächlich teilnehmen
+const SCENARIOS = [
+  { key: 'worst',  label: 'Worst 5%',  pct: 0.05 },
+  { key: 'normal', label: 'Normal 10%', pct: 0.10 },
+  { key: 'best',   label: 'Best 15%',  pct: 0.15 }
+];
+
+// Cache der bereits berechneten Isochronen pro Standort & Minute
+// { "Zürich_45": { polygon: GeoJSON, clubs: [...] }, ... }
+const isoCache = {};
+// Layer der Isochronen-Ansicht (alle angezeigt auf der Karte)
+const isoMapLayers = { 45: [], 60: [] };
+let isoActiveStandortIdx = null; // für Hervorhebung
+
+document.querySelectorAll('.main-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const target = tab.dataset.view;
+    document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.view-panel').forEach(v => v.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('view-' + target).classList.add('active');
+
+    if (target === 'iso') enterIsoView();
+    else enterSingleView();
+
+    // Leaflet braucht invalidateSize nach Layout-Änderungen
+    setTimeout(() => map.invalidateSize(), 50);
+  });
+});
+
+function clearIsoMapLayers() {
+  [45, 60].forEach(m => {
+    isoMapLayers[m].forEach(l => map.removeLayer(l));
+    isoMapLayers[m] = [];
+  });
+}
+
+function enterSingleView() {
+  clearIsoMapLayers();
+  // Restore normal single-standort state on the map
+  if (activeStandort) {
+    // Re-select to restore the appropriate radius/isochrone layer
+    selectStandort(activeStandort, activeIdx);
+  } else {
+    drawClubs(null);
+  }
+}
+
+function enterIsoView() {
+  // Hide all single-view map overlays
+  if (radiusCircle) { map.removeLayer(radiusCircle); radiusCircle = null; }
+  if (isochroneLayer) { map.removeLayer(isochroneLayer); isochroneLayer = null; }
+  isochronePolygon = null;
+  activeMapFilter = null;
+
+  // In der Iso-Ansicht zeigen wir alle Clubs (kein aktiver Radius)
+  drawClubs(null);
+
+  // Initial Render (leerer Zustand oder vorhandenes Cache-Ergebnis)
+  renderIsoResults();
+
+  // Overview of Switzerland
+  map.setView([46.8, 8.2], 8);
+}
+
+// Render der Iso-Ergebnisliste (basiert auf isoCache)
+function renderIsoResults() {
+  const host = document.getElementById('iso-results');
+  host.innerHTML = STANDORTE.map((s, i) => {
+    const c45 = isoCache[`${s.name}_45`];
+    const c60 = isoCache[`${s.name}_60`];
+    const loading = (c45 && c45.loading) || (c60 && c60.loading);
+    const activeCls = (isoActiveStandortIdx === i) ? ' active' : '';
+    return `
+      <div class="iso-standort-card${loading ? ' loading' : ''}${activeCls}" data-iso-idx="${i}">
+        <div class="iso-standort-name">${i+1}. ${s.name}</div>
+        <div class="iso-standort-desc">${s.desc}</div>
+        ${renderIsoZone(c45, 45)}
+        ${renderIsoZone(c60, 60)}
+      </div>
+    `;
+  }).join('');
+
+  // Klick auf Karte → Standort fokussieren & seine Isochronen hervorheben
+  document.querySelectorAll('.iso-standort-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const idx = parseInt(card.dataset.isoIdx);
+      focusIsoStandort(idx);
+    });
+  });
+}
+
+function renderIsoZone(entry, minutes) {
+  const colorCls = minutes === 45 ? 'iso-zone-45' : 'iso-zone-60';
+  if (!entry) {
+    return `<div class="iso-zone ${colorCls}"><div class="iso-zone-head"><span>${minutes} Min</span><span class="zone-clubs">– noch nicht berechnet –</span></div></div>`;
+  }
+  if (entry.loading) {
+    return `<div class="iso-zone ${colorCls}"><div class="iso-zone-head"><span>${minutes} Min</span><span class="zone-clubs" style="color:#aaa;font-size:11px">Berechne…</span></div></div>`;
+  }
+  if (entry.error) {
+    return `<div class="iso-zone ${colorCls}"><div class="iso-zone-head"><span>${minutes} Min</span><span class="zone-clubs" style="color:#CC0000;font-size:11px">${entry.error}</span></div></div>`;
+  }
+  const n = entry.clubs.length;
+  // 1 Club = 1 potenzieller Teilnehmer → Basis ist direkt die Anzahl Clubs
+  const basis = n;
+  return `
+    <div class="iso-zone ${colorCls}">
+      <div class="iso-zone-head"><span>${minutes} Min Fahrzeit</span><span class="zone-clubs">${n} Clubs</span></div>
+      <div class="iso-scenarios">
+        ${SCENARIOS.map(sc => `
+          <div class="iso-scenario ${sc.key}">
+            <div class="iso-scenario-label">${sc.label}</div>
+            <div class="iso-scenario-val">${Math.round(basis * sc.pct).toLocaleString('de-CH')}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// Zählt Clubs innerhalb eines Isochronen-Polygons (berücksichtigt aktuelle Sidebar-Filter)
+function countClubsInsidePolygon(polygonGeom) {
+  const filtered = getFilteredClubs();
+  return filtered.filter(c => pointInPolygon(c.latitude, c.longitude, polygonGeom.coordinates));
+}
+
+// Zeichnet alle berechneten Isochronen auf der Karte (während iso-view aktiv ist)
+function redrawAllIsoLayersOnMap() {
+  clearIsoMapLayers();
+  STANDORTE.forEach((s, i) => {
+    [45, 60].forEach(minutes => {
+      const entry = isoCache[`${s.name}_${minutes}`];
+      if (entry && entry.polygon) {
+        const color = minutes === 45 ? '#E87722' : '#CC0000';
+        const weight = (isoActiveStandortIdx === i) ? 2.5 : 1;
+        const fillOp = (isoActiveStandortIdx === i) ? 0.08 : 0.03;
+        const layer = L.geoJSON({type:'Feature', geometry: entry.polygon}, {
+          style: { color, fillColor: color, fillOpacity: fillOp, weight, dashArray: minutes === 45 ? '4,3' : '6,4' }
+        }).addTo(map);
+        isoMapLayers[minutes].push(layer);
+      }
+    });
+
+    // Standort-Marker sind schon via initStandorte() auf der Karte
+  });
+}
+
+function focusIsoStandort(i) {
+  isoActiveStandortIdx = i;
+  const s = STANDORTE[i];
+  map.setView([s.lat, s.lon], 8);
+  redrawAllIsoLayersOnMap();
+  renderIsoResults(); // re-render, um .active CSS-Klasse zu setzen
+}
+
+// Haupt-Trigger: berechnet alle 45/60-Min Isochronen sequenziell (ORS rate-limit-freundlich)
+async function computeAllIsochrones() {
+  if (!orsApiKey) {
+    alert('Bitte zuerst einen ORS API-Key im Tab „Einzelstandort" speichern.');
+    return;
+  }
+  const btn = document.getElementById('iso-compute-btn');
+  btn.disabled = true;
+
+  for (let i = 0; i < STANDORTE.length; i++) {
+    const s = STANDORTE[i];
+    for (const minutes of [45, 60]) {
+      const key = `${s.name}_${minutes}`;
+      if (isoCache[key] && isoCache[key].polygon && !isoCache[key].error) continue; // schon da
+
+      isoCache[key] = { loading: true };
+      btn.textContent = `Berechne ${s.name} · ${minutes} Min … (${i+1}/${STANDORTE.length})`;
+      renderIsoResults();
+
+      try {
+        const geom = await fetchIsochrone(s.lat, s.lon, minutes);
+        if (geom) {
+          const clubs = countClubsInsidePolygon(geom);
+          isoCache[key] = { polygon: geom, clubs };
+        } else {
+          isoCache[key] = { error: 'Kein Ergebnis' };
+        }
+      } catch (e) {
+        console.error('Iso error for', key, e);
+        isoCache[key] = { error: 'Fehler' };
+      }
+
+      renderIsoResults();
+      redrawAllIsoLayersOnMap();
+      // Kurze Pause um ORS-Ratelimit zu schonen
+      await new Promise(r => setTimeout(r, 400));
+    }
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Analyse neu berechnen';
+}
+
+document.getElementById('iso-compute-btn').addEventListener('click', computeAllIsochrones);
+
+// Wenn sich die Sidebar-Filter ändern, müssen wir die Club-Zählung pro Isochrone aktualisieren
+// (Polygon bleibt, aber die gefilterte Club-Menge kann sich geändert haben).
+// Wird von applyFilters() automatisch aufgerufen.
+function recountIsoResultsAgainstFilters() {
+  Object.keys(isoCache).forEach(key => {
+    const entry = isoCache[key];
+    if (entry && entry.polygon && !entry.error) {
+      entry.clubs = countClubsInsidePolygon(entry.polygon);
+    }
+  });
+  if (document.getElementById('view-iso').classList.contains('active')) {
+    renderIsoResults();
+  }
+}
 
 initSegmentFilters();
 updateFilterCount();
